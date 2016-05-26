@@ -1,5 +1,13 @@
+module CrystalTest
 using Crystal
-using Base.Test
+using FactCheck
 
-# write your own tests here
-@test 1 == 1
+facts("Construction") do
+  context("Empty") do
+    structure = Structure()
+    @fact all(abs(structure.cell - eye(3)) .< 1e-8)
+  end
+end
+
+FactCheck.exitstatus()
+end
