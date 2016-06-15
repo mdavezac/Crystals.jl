@@ -1,10 +1,10 @@
 module Crystal
 
-using DataFrames: DataFrame
+import Base: length, ndims, push!
+using DataFrames: DataFrame, NA, DataArray, nrow, ncol
 
 typealias POSITIONS Array{Float64, 2}
 typealias CELL POSITIONS
-typealias SPECIES Array{UTF16String, 1}
 
 " All the information needed to specify a crystal structure "
 type Structure
@@ -12,29 +12,33 @@ type Structure
   cell::CELL
   " nx3 matrix specifying the atomic positions "
   positions::POSITIONS
-  " array of atomic species "
-  species::SPECIES
   " other atomic properties "
   properties::DataFrame
   " Scale factor for the cell and atomic positions "
   scale::eltype(POSITIONS)
 
-  function Structure(cell=eye(3), positions=POSITIONS(), specie=SPECIES(),
-                     attributes=DataFrame(), scale=1e0)
-    new(eye(3), POSITIONS(), SPECIES(), DataFrame(), 1e0)
+  function Structure(cell=eye(3), scale=1e0; specie_type=UTF8String)
+    @assert size(cell, 1) == size(cell, 2)
+    new(cell, POSITIONS(size(cell, 1), 0), DataFrame(specie=specie_type[]), scale)
   end
 end
 
 import Base: push!, getindex, length
-length(s::Structure) = length(positions)
-getindex(s::Structure, i) = (s.positions[i], s.species[i], s.properties[i, :])
+length(s::Structure) = size(s.positions, 2)
+ndims(s::Structure) = size(s.cell, 1)
 function push!(s::Structure, position, specie; kwargs...)
-  if size(s.positions) == 0
-    s.positions = position
-    return
+  s.positions = hcat(s.positions, position)
+  # Add row to properties
+  push!(kwargs, (:specie, specie))
+  push!(s.properties, fill(NA, ncol(s.properties)))
+  for (name, value) in kwargs
+    if name ∉ names(s.properties)
+      valtype = typeof(value) == typeof(NA) ? Any: typeof(value)
+      s.properties[name] = DataArray(valtype, nrow(s.properties))
+    end
+    s.properties[max(end, 1), name] = value
   end
-  s.positions = vcat(s.positions, position)
-  # s.species = vcat(s.species, [species])
+  s
 end
 
 
