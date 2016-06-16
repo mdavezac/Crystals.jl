@@ -12,7 +12,7 @@ facts("Construction") do
       @fact abs(structure.cell - eye(ndim)) .< 1e-8 --> all
       @fact length(structure.positions) --> 0
       @fact length(structure) --> 2
-      @fact ndims(structure) --> ndim
+      @fact ndims(structure) --> 2
       @fact nrow(structure.properties) --> 0
       @fact ncol(structure.properties) --> 1
       @fact names(structure.properties) --> contains(:specie)
@@ -33,7 +33,7 @@ for ndim in [2, 3]
       @fact size(structure.positions, 1) --> ndim
       @fact nrow(structure.properties) --> 1
       @fact ncol(structure.properties) --> 1
-      @fact ndims(structure) --> ndim
+      @fact ndims(structure) --> 2
       @fact length(structure) --> 2
       @fact structure.positions[:, 1] --> roughly(ones(ndim))
       @fact structure.properties[1, :specie] --> "Al"
@@ -46,7 +46,7 @@ for ndim in [2, 3]
       @fact size(structure.positions, 2) --> 1
       @fact size(structure.positions, 1) --> ndim
       @fact structure.positions[:, 1] --> roughly(ones(ndim))
-      @fact ndims(structure) --> ndim
+      @fact ndims(structure) --> 2
       @fact length(structure) --> 3
 
       @fact nrow(structure.properties) --> 1
@@ -90,6 +90,60 @@ for ndim in [2, 3]
       @fact full[:charge] --> structure[:charge]
       @fact full[:position] --> structure[:position]
       @fact full --> x -> x ≢ structure
+    end
+
+    context("Row") do
+      @fact structure[1, :specie] --> "C"
+      @fact structure[2, :charge] --> -2
+      @fact structure[3, :label] --> 2
+      @fact structure[2, :position] --> roughly([0.25, 0.25, 0.25][1:ndim])
+      @fact structure[2, end] --> roughly([0.25, 0.25, 0.25][1:ndim])
+
+      partial = structure[2, [:charge, :label]]
+      @fact names(partial) --> [:charge, :label, :position]
+      @fact partial.cell --> roughly(structure.cell)
+      @fact partial.scale --> roughly(structure.scale)
+      @fact partial[:charge] --> structure[:charge][2:2]
+      @fact partial[:position] --> roughly(structure[:position][:, 2:2])
+
+      @fact names(structure[2, [:position]]) --> [:position]
+
+      partial = structure[2, :]
+      @fact names(partial) --> names(structure)
+      @fact partial.cell --> roughly(structure.cell)
+      @fact partial.scale --> roughly(structure.scale)
+      @fact partial[:specie] --> structure[:specie][2:2]
+      @fact partial[:position] --> roughly(structure[:position][:, 2:2])
+    end
+
+    context("Rows") do
+      @fact structure[[1, 3, 1], :charge] --> [4, -2, 4]
+      @fact structure[[2, 3], :label] --> [1, 2]
+      @fact structure[[2, 3], :position] -->
+                roughly(structure.positions[:, [2, 3]])
+      @fact structure[[2, 1], end] -->
+                roughly(structure.positions[:, [2, 1]])
+
+      partial = structure[[3, 2], [:position, :label]]
+      @fact names(partial) --> [:label, :position]
+      @fact partial.cell --> roughly(structure.cell)
+      @fact partial.scale --> roughly(structure.scale)
+      @fact partial[:label] --> structure[:label][[3, 2]]
+      @fact partial[:position] --> roughly(structure[:position][:, [3, 2]])
+
+      partial = structure[:, [:specie]]
+      @fact names(partial) --> [:specie, :position]
+      @fact partial.cell --> roughly(structure.cell)
+      @fact partial.scale --> roughly(structure.scale)
+      @fact partial[:specie] --> structure[:specie]
+      @fact partial[:position] --> roughly(structure[:position])
+
+      partial = structure[2:3, [:specie]]
+      @fact names(partial) --> [:specie, :position]
+      @fact partial.cell --> roughly(structure.cell)
+      @fact partial.scale --> roughly(structure.scale)
+      @fact partial[:specie] --> structure[:specie][2:3]
+      @fact partial[:position] --> roughly(structure[:position][:, 2:3])
     end
   end
 end

@@ -33,13 +33,20 @@ type Structure
 end
 
 Base.length(s::Structure) = length(s.properties) + 1
-Base.size(s::Structure) = (size(s.positions, 1), length(s))
-function Base.size(s::Structure, i::Int)
-  @assert i == 1 || i == 2
-  return i == 1 ? size(s.positions, 1): length(s)
+nrow(s::Structure) = size(s.positions, 1)
+ncol(s::Structure) = length(s)
+Base.size(s::Structure) = (nrow(s), ncol(s))
+function Base.size(s::Structure, i::Integer)
+  if i == 1
+    nrow(s)
+  elseif i == 2
+    ncol(s)
+  else
+    throw(ArgumentError("Structures have only two dimensions"))
+  end
 end
-Base.ndims(s::Structure) = size(s.cell, 1)
-Base.endof(s::Structure) = length(s)
+Base.ndims(s::Structure) = 2
+Base.endof(s::Structure) = length(s.properties) + 1
 Base.names(s::Structure) = [names(s.properties); :position]
 
 """
@@ -95,14 +102,53 @@ end
 New structure with only the specified properties. The cell, scale, and
 positions are always copied.
 """
-function Base.getindex{T <: ColumnIndex}(s::Structure, col_inds::AbstractVector{T})
+function Base.getindex{T <: ColumnIndex}(
+        s::Structure, col_inds::AbstractVector{T})
     result = Structure(s.cell, s.scale)
     result.positions = copy(s.positions)
-    indices = filter(𝒾 -> 𝒾 ∉ [1 :position], col_inds)
+    indices = filter(𝒾 -> 𝒾 ∉ [endof(s) :position], col_inds)
     result.properties = s.properties[indices]
     result
 end
-Base.getindex(structure::Structure, col_inds::Colon) = copy(structure)
+Base.getindex(structure::Structure, ::Colon) = copy(structure)
+Base.getindex(structure::Structure, ::Colon, ::Colon) = copy(structure)
+
+function Base.getindex{T <: Real}(s::Structure,
+                                  row_ind::Union{T, AbstractVector{T}},
+                                  col_ind::ColumnIndex)
+  if col_ind ∈ [endof(s) :position]
+    return s.positions[:, row_ind]
+  end
+  s[col_ind][row_ind]
+end
+function Base.getindex{T <: ColumnIndex}(
+        s::Structure, row_ind::Real, col_inds::AbstractVector{T})
+  result = Structure(s.cell, s.scale)
+  result.positions = s.positions[:, row_ind:row_ind]
+  indices = filter(𝒾 -> 𝒾 ∉ [endof(s) :position], col_inds)
+  result.properties = s.properties[row_ind, indices]
+  result
+end
+function Base.getindex{R <: Real, T <: ColumnIndex}(
+          s::Structure, row_inds::AbstractVector{R}, col_inds::AbstractVector{T})
+  result = Structure(s.cell, s.scale)
+  result.positions = s.positions[:, row_inds]
+  indices = filter(𝒾 -> 𝒾 ∉ [endof(s) :position], col_inds)
+  result.properties = s.properties[row_inds, indices]
+  result
+end
+function Base.getindex{T<:ColumnIndex}(s::Structure,
+                                       ::Colon,
+                                       col_inds::Union{T, AbstractVector{T}})
+  s[col_inds]
+end
+Base.getindex(s::Structure, row_ind::Real, ::Colon) = s[[row_ind], :]
+function Base.getindex{R<:Real}(s::Structure, row_inds::AbstractVector{R}, ::Colon)
+  result = Structure(s.cell, s.scale)
+  result.positions = s.positions[:, row_inds]
+  result.properties = s.properties[row_inds, :]
+  result
+end
 
 export Structure
 
