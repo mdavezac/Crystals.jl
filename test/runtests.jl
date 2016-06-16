@@ -81,6 +81,15 @@ for ndim in [2, 3]
       @fact partial.scale --> roughly(structure.scale)
       @fact partial[:charge] --> structure[:charge]
       @fact partial[:position] --> structure[:position]
+
+      full = structure[:]
+      @fact names(full) --> names(structure)
+      @fact full.cell --> roughly(structure.cell)
+      @fact full.scale --> roughly(structure.scale)
+      @fact full[:specie] --> structure[:specie]
+      @fact full[:charge] --> structure[:charge]
+      @fact full[:position] --> structure[:position]
+      @fact full --> x -> x ≢ structure
     end
   end
 end

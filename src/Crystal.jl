@@ -75,6 +75,12 @@ function Base.push!(s::Structure, position, specie; kwargs...)
   s
 end
 
+function Base.copy(s::Structure)
+    result = Structure(s.cell, s.scale)
+    result.positions = copy(s.positions)
+    result.properties = copy(s.properties)
+    result
+end
 
 function Base.getindex(s::Structure, col_ind::Real)
   return col_ind == endof(s) ? s.positions: s.properties[col_ind]
@@ -91,12 +97,12 @@ positions are always copied.
 """
 function Base.getindex{T <: ColumnIndex}(s::Structure, col_inds::AbstractVector{T})
     result = Structure(s.cell, s.scale)
-    result.positions = s.positions
+    result.positions = copy(s.positions)
     indices = filter(𝒾 -> 𝒾 ∉ [1 :position], col_inds)
     result.properties = s.properties[indices]
     result
 end
-
+Base.getindex(structure::Structure, col_inds::Colon) = copy(structure)
 
 export Structure
 
