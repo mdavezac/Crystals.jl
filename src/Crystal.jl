@@ -1,6 +1,7 @@
 module Crystal
 
-using DataFrames: DataFrame, NA, DataArray, nrow, ncol
+using DataFrames: DataFrame, NA, DataArray,ColumnIndex, index
+import DataFrames: names, names!, nrow, ncol
 
 typealias POSITIONS Array{Float64, 2}
 typealias CELL POSITIONS
@@ -31,8 +32,15 @@ type Structure
   end
 end
 
-Base.length(s::Structure) = size(s.positions, 2)
+Base.length(s::Structure) = length(s.properties) + 1
+Base.size(s::Structure) = (size(s.positions, 1), length(s))
+function Base.size(s::Structure, i::Int)
+  @assert i == 1 || i == 2
+  return i == 1 ? size(s.positions, 1): length(s)
+end
 Base.ndims(s::Structure) = size(s.cell, 1)
+Base.endof(s::Structure) = length(s)
+Base.names(s::Structure) = [names(s.properties); :position]
 
 """
     Base.push!(structure::Structure, position, specie; <keyword arguments>)
@@ -65,6 +73,28 @@ function Base.push!(s::Structure, position, specie; kwargs...)
     s.properties[max(end, 1), name] = value
   end
   s
+end
+
+
+function Base.getindex(s::Structure, col_ind::Real)
+  return col_ind == endof(s) ? s.positions: s.properties[col_ind]
+end
+function Base.getindex(s::Structure, col_ind::Symbol)
+  return col_ind == :position ? s.positions: s.properties[col_ind]
+end
+
+"""
+    getindex{T <: ColumnIndex}(structure::Structure, indices::Union{Real, Symbol}[])
+
+New structure with only the specified properties. The cell, scale, and
+positions are always copied.
+"""
+function Base.getindex{T <: ColumnIndex}(s::Structure, col_inds::AbstractVector{T})
+    result = Structure(s.cell, s.scale)
+    result.positions = s.positions
+    indices = filter(𝒾 -> 𝒾 ∉ [1 :position], col_inds)
+    result.properties = s.properties[indices]
+    result
 end
 
 
