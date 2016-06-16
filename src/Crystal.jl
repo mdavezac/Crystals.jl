@@ -1,6 +1,5 @@
 module Crystal
 
-import Base: length, ndims, push!
 using DataFrames: DataFrame, NA, DataArray, nrow, ncol
 
 typealias POSITIONS Array{Float64, 2}
@@ -23,10 +22,10 @@ type Structure
   end
 end
 
-import Base: push!, getindex, length
-length(s::Structure) = size(s.positions, 2)
-ndims(s::Structure) = size(s.cell, 1)
-function push!(s::Structure, position, specie; kwargs...)
+Base.length(s::Structure) = size(s.positions, 2)
+Base.ndims(s::Structure) = size(s.cell, 1)
+
+function Base.push!(s::Structure, position, specie; kwargs...)
   s.positions = hcat(s.positions, position)
   # Add row to properties
   push!(kwargs, (:specie, specie))
