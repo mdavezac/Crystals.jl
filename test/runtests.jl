@@ -76,7 +76,13 @@ for ndim in [2, 3]
 
     context("Columns") do
       partial = structure[[:charge, :label]]
-      @fact names(partial) --> [:charge, :label, :position]
+      @fact names(partial) --> [:charge, :label]
+      @fact partial[:charge] --> structure[:charge]
+      @fact partial[:label][1] --> x -> x ≡ NA
+      @fact partial[:label][2:end] --> [1, 2]
+
+      partial = structure[[:position, :charge]]
+      @fact names(partial) --> [:charge, :position]
       @fact partial.cell --> roughly(structure.cell)
       @fact partial.scale --> roughly(structure.scale)
       @fact partial[:charge] --> structure[:charge]
@@ -100,7 +106,12 @@ for ndim in [2, 3]
       @fact structure[2, end] --> roughly([0.25, 0.25, 0.25][1:ndim])
 
       partial = structure[2, [:charge, :label]]
-      @fact names(partial) --> [:charge, :label, :position]
+      @fact names(partial) --> [:charge, :label]
+      @fact partial[:charge] --> structure[:charge][2:2]
+      @fact partial[:label] --> structure[:label][2:2]
+
+      partial = structure[2, [:position, :charge]]
+      @fact names(partial) --> [:charge, :position]
       @fact partial.cell --> roughly(structure.cell)
       @fact partial.scale --> roughly(structure.scale)
       @fact partial[:charge] --> structure[:charge][2:2]
@@ -132,18 +143,19 @@ for ndim in [2, 3]
       @fact partial[:position] --> roughly(structure[:position][:, [3, 2]])
 
       partial = structure[:, [:specie]]
-      @fact names(partial) --> [:specie, :position]
-      @fact partial.cell --> roughly(structure.cell)
-      @fact partial.scale --> roughly(structure.scale)
+      @fact names(partial) --> [:specie]
       @fact partial[:specie] --> structure[:specie]
-      @fact partial[:position] --> roughly(structure[:position])
 
-      partial = structure[2:3, [:specie]]
+      partial = structure[2:3, [:specie, :position]]
       @fact names(partial) --> [:specie, :position]
       @fact partial.cell --> roughly(structure.cell)
       @fact partial.scale --> roughly(structure.scale)
       @fact partial[:specie] --> structure[:specie][2:3]
       @fact partial[:position] --> roughly(structure[:position][:, 2:3])
+
+      partial = structure[2:3, [:specie]]
+      @fact names(partial) --> [:specie]
+      @fact partial[:specie] --> structure[:specie][2:3]
     end
   end
 end
