@@ -52,8 +52,11 @@ function Positions(x::Matrix)
     error("Incorrect column vector size")
   return convert(Vector{positions_type(x[:, 1])}, x)
 end
-Positions{T <: PositionTypes}(x::DataArray{T}) = x
-Positions{T <: PositionTypes}(x::Vector{T}) = x
+Positions(x::DataArray) = x
+function Positions(x::Vector)
+  T = positions_type(x)::Type
+  T[T(x)]
+end
 
 abstract AbstractCrystal
 
@@ -122,6 +125,7 @@ function Crystal(cell::Matrix, columns::Vector{Any}, names::Vector{Symbol},
 end
 
 # Forwards all indexing to the DataFrame
+""" Equivalent to `getindex(crystal.atoms, ...)` """
 Base.getindex(crystal::Crystal, col::ColumnIndex) = crystal.atoms[col]
 Base.getindex(crystal::Crystal, ::Colon) = crystal.atoms[:]
 Base.getindex(crystal::Crystal, cols::AbstractVector{ColumnIndex}) = crystal.atoms[cols]
@@ -141,8 +145,15 @@ function Base.getindex{R <: Integer}(crystal::Crystal,
   crystal.atoms[row, :]
 end
 Base.getindex(crystal::Crystal, ::Colon, ::Colon) = crystal.atoms[:, :]
+""" Equivalent to `names(crystal.atoms)` """
 Base.names(crystal::Crystal) = names(crystal.atoms)
+""" Equivalent to `endof(crystal.atoms)` """
 Base.endof(crystal::Crystal) = endof(crystal.atoms)
+""" Equivalent to `size(crystal.atoms)` """
+Base.size(crystal::Crystal) = size(crystal.atoms)
+Base.size(crystal::Crystal, i) = size(crystal.atoms, i)
+""" Equivalent to `ndims(crystal.atoms)` """
+Base.ndims(crystal::Crystal) = ndims(crystal.atoms)
 
 export Crystal, Positions
 

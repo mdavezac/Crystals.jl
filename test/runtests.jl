@@ -48,6 +48,22 @@ facts("Construction") do
   end
 end
 
+facts("Check direct indexing") do
+  context("getindex") do
+    crystal = Crystal(eye(2), specie=["Al", "O", "O"],
+                      position=[1 1 1; 2 3 4], label=[:+, :-, :-])
+    @fact crystal[:label] --> [:+, :-, :-]
+    @fact crystal[1, :position] --> [1, 2]
+    @fact crystal[2, :position] --> [1, 3]
+    @fact crystal[end, :position] --> [1, 4]
+    @fact crystal[:, end] --> [:+, :-, :-]
+    @fact crystal[1, [:position, :label]] -->
+        Crystal(eye(2), position=[1, 2], label=[:+]).atoms
+    @fact crystal[[1, 3], [:position, :label]] -->
+        Crystal(eye(2), position=[1 1; 2 4], label=[:+, :-]).atoms
+    @fact crystal[:] --> crystal.atoms
+  end
+end
 
 exitstatus()
 end
