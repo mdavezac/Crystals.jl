@@ -1,6 +1,6 @@
 module Crystals
 
-using DataFrames: DataFrame, nrow, DataArray, ColumnIndex
+using DataFrames: DataFrame, nrow, DataArray, ColumnIndex, index
 using FixedSizeArrays: FixedVectorNoTuple
 
 
@@ -154,6 +154,80 @@ Base.size(crystal::Crystal) = size(crystal.atoms)
 Base.size(crystal::Crystal, i) = size(crystal.atoms, i)
 """ Equivalent to `ndims(crystal.atoms)` """
 Base.ndims(crystal::Crystal) = ndims(crystal.atoms)
+
+# Single column
+function Base.setindex!{T <: Real}(crystal::Crystal, v::Any, col::T)
+  @assert(:position ∈ names(crystal))
+  const conv = index(crystal.atoms)[:position] ≠ col
+  setindex!(crystal.atoms, conv ? v: Positions(v), col)
+end
+function Base.setindex!(crystal::Crystal, v::Any, col::Symbol)
+  @assert(:position ∈ names(crystal))
+  const conv = :position ≠ col
+  setindex!(crystal.atoms, conv ? v: Positions(v), col)
+end
+
+# Multiple columns
+for VAL in [DataFrame, Crystal]
+  @eval begin
+    function Base.setindex!(crystal::Crystal,
+                            other::$VAL,
+                            col_inds::AbstractVector{Symbol})
+      for col in col_inds
+          setindex!(crystal, other[col], col)
+      end
+      crystal
+    end
+    function Base.setindex!{T <: Real}(crystal::Crystal,
+                                       other::$VAL,
+                                       col_inds::AbstractVector{T})
+      for col in col_inds
+          setindex!(crystal, other[col], col)
+      end
+      crystal
+    end
+  end
+end
+
+# Sets columns from array of positions
+function Base.setindex!{T <: Real}(crystal::Crystal,
+                                   v::AbstractMatrix,
+                                   col_inds::AbstractVector{T})
+    setindex!(crystal.atoms, Positions(v), col_inds)
+end
+function Base.setindex!(crystal::Crystal,
+                        v::AbstractMatrix,
+                        col_inds::AbstractVector{Symbol})
+    setindex!(crystal.atoms, Positions(v), col_inds)
+end
+
+for T in [AbstractVector, Any]
+  @eval begin
+    function Base.setindex!{T <: Real}(crystal::Crystal,
+                                       v::$T, col_inds::AbstractVector{T})
+        const is_pos = index(crystal.atoms)[:position] ∈ col_inds
+        setindex!(crystal.atoms, is_pos ? Positions(v): v, col_inds)
+    end
+    function Base.setindex!(crystal::Crystal,
+                            v::$T, col_inds::AbstractVector{Symbol})
+        const is_pos = :position ∈ col_inds
+        setindex!(crystal.atoms, is_pos ? Positions(v): v, col_inds)
+    end
+  end
+end
+
+# All AbstractVector{Bool} have similar definition
+# They are defined explicitly to avoid ambiguous definitions
+for T in [DataFrame, Crystal, AbstractVector, AbstractMatrix, Any]
+  @eval begin
+    function Base.setindex!(crystal::Crystal, v::$T, col_inds::AbstractVector{Bool})
+      setindex!(crystal, v, find(col_inds))
+    end
+  end
+end
+
+
+Base.setindex!(crystal::Crystal, v, ::Colon) = setindex!(crystal.atoms, v, :)
 
 export Crystal, Positions
 

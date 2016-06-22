@@ -63,6 +63,53 @@ facts("Check direct indexing") do
         Crystal(eye(2), position=[1 1; 2 4], label=[:+, :-]).atoms
     @fact crystal[:] --> crystal.atoms
   end
+
+  context("setindex!") do
+    crystal = Crystal(eye(3), specie=["Al", "O"],
+                      position=transpose([1 1 1; 2 3 4]),
+                      label=[:+, :-])
+    context("Single column") do
+      crystal[:label] = [:z, :a]
+      @fact crystal[:label] --> [:z, :a]
+      crystal[3] = [:Z, :A]
+      @fact crystal[:label] --> [:Z, :A]
+
+      crystal[:position] = transpose([1 3 4; 2 2 6])
+      @fact crystal[1, :position] --> [1, 3, 4]
+      @fact crystal[2, :position] --> [2, 2, 6]
+
+      crystal[2] = transpose([6 2 8; 4 3 2])
+      @fact crystal[1, :position] --> [6, 2, 8]
+      @fact crystal[2, :position] --> [4, 3, 2]
+    end
+
+    context("Multi-column") do
+      original = deepcopy(crystal)
+      other = Crystal(eye(3), specie=["Ru", "Ta"],
+                        position=transpose([2 4 6; 4 1 2]),
+                        label=[:a, :b])
+      crystal[[:specie, :label]] = other
+      @fact crystal[:specie] --> exactly(other[:specie])
+      @fact crystal[:label] --> exactly(other[:label])
+
+      crystal[[:specie, :label]] = original.atoms
+      @fact crystal[:specie] --> exactly(original[:specie])
+      @fact crystal[:label] --> exactly(original[:label])
+
+      crystal[[false, true]] = other
+      @fact crystal[:specie] --> exactly(original[:specie])
+      @fact crystal[:label] --> exactly(original[:label])
+      @fact crystal[:position] --> exactly(other[:position])
+
+      crystal[[false, true]] = transpose([1 1 2; 3 3 2])
+      @fact crystal[1, :position] --> Crystals.Position3D(1, 1, 2)
+      @fact crystal[2, :position] --> Crystals.Position3D(3, 3, 2)
+
+      crystal[[:this, :specie]] = "Al"
+      @fact crystal[:this] --> ["Al", "Al"]
+      @fact crystal[:specie] --> ["Al", "Al"]
+    end
+  end
 end
 
 exitstatus()
