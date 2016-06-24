@@ -226,8 +226,140 @@ for T in [DataFrame, Crystal, AbstractVector, AbstractMatrix, Any]
   end
 end
 
+# single row index, single column index
+function Base.setindex!(crystal::Crystal, v::Any, row_ind::Real,
+                        col_ind::ColumnIndex)
+  setindex!(crystal.atoms, v, row_ind, col_ind)
+end
 
-Base.setindex!(crystal::Crystal, v, ::Colon) = setindex!(crystal.atoms, v, :)
+# single row index, multi column index
+function Base.setindex!{T <: ColumnIndex}(crystal::Crystal,
+                                          v::Any,
+                                          row_ind::Real,
+                                          col_inds::AbstractVector{T})
+  for col in col_inds
+    Base.setindex!(crystal.atoms, v, row_ind, col)
+  end
+end
+function Base.setindex!(crystal::Crystal,
+                        v::Any,
+                        row_ind::Real,
+                        col_inds::AbstractVector{Bool})
+    setindex!(crystal, v, row_ind, find(col_inds))
+end
+
+# Multi-row, single column
+function Base.setindex!{R <: Real}(crystal::Crystal,
+                                   v::Any,
+                                   row_inds::AbstractVector{Bool},
+                                   col_ind::R)
+  setindex!(crystal, v, find(row_inds), col_ind)
+end
+function Base.setindex!(crystal::Crystal,
+                        v::Any,
+                        row_inds::AbstractVector{Bool},
+                        col_ind::Symbol)
+  setindex!(crystal, v, find(row_inds), col_ind)
+end
+function Base.setindex!{T <: Real, R <: Real}(crystal::Crystal,
+                                              v::Any,
+                                              row_inds::AbstractVector{T},
+                                              col_ind::R)
+  const is_pos = index(crystal.atoms)[:position] == col_ind
+  setindex!(crystal.atoms, is_pos ? Positions(v): v, row_inds, col_ind)
+end
+function Base.setindex!{T <: Real}(crystal::Crystal,
+                                   v::Any,
+                                   row_inds::AbstractVector{T},
+                                   col_ind::Symbol)
+  const is_pos = :position == col_ind
+  setindex!(crystal.atoms, is_pos ? Positions(v): v, row_inds, col_ind)
+end
+
+# Multi-row multi column
+function Base.setindex!(crystal::Crystal,
+                        other::Crystal,
+                        row_inds::AbstractVector{Bool},
+                        col_inds::AbstractVector{Bool})
+    setindex!(crystal, other.atoms, find(row_inds), find(col_inds))
+end
+function Base.setindex!{T <: ColumnIndex}(crystal::Crystal,
+                                          other::Crystal,
+                                          row_inds::AbstractVector{Bool},
+                                          col_inds::AbstractVector{T})
+    setindex!(crystal, other.atoms, find(row_inds), col_inds)
+end
+function Base.setindex!{R <: Real}(crystal::Crystal,
+                                   other::Crystal,
+                                   row_inds::AbstractVector{R},
+                                   col_inds::AbstractVector{Bool})
+    setindex!(crystal, other.atoms, row_inds, find(col_inds))
+end
+
+function Base.setindex!{R <: Real, T <: ColumnIndex}(crystal::Crystal,
+                                                     other::DataFrame,
+                                                     row_inds::AbstractVector{R},
+                                                     col_inds::AbstractVector{T})
+    for j in 1:length(col_inds)
+        setindex!(crystal, other[:, col_inds[j]], row_inds, col_inds[j])
+    end
+    return crystal.atoms
+end
+function Base.setindex!{R <: Real, T <: ColumnIndex}(crystal::Crystal,
+                                                     v::AbstractVector,
+                                                     row_inds::AbstractVector{R},
+                                                     col_inds::AbstractVector{T})
+    for col_ind in col_inds
+        setindex!(crystal, v, row_inds, col_ind)
+    end
+    return crystal.atoms
+end
+function Base.setindex!{R <: Real, T <: ColumnIndex}(crystal::Crystal,
+                                                     v::Any,
+                                                     row_inds::AbstractVector{R},
+                                                     col_inds::AbstractVector{T})
+    for col_ind in col_inds
+        setindex!(crystal, v, row_inds, col_ind)
+    end
+    return crystal.atoms
+end
+
+for OTHER in [DataFrame, AbstractVector, Any]
+  @eval begin
+    function Base.setindex!(crystal::Crystal,
+                            other::$OTHER,
+                            row_inds::AbstractVector{Bool},
+                            col_inds::AbstractVector{Bool})
+        setindex!(crystal, other, find(row_inds), find(col_inds))
+    end
+    function Base.setindex!{T <: ColumnIndex}(crystal::Crystal,
+                                              other::$OTHER,
+                                              row_inds::AbstractVector{Bool},
+                                              col_inds::AbstractVector{T})
+        setindex!(crystal, other, find(row_inds), col_inds)
+    end
+    function Base.setindex!{R <: Real}(crystal::Crystal,
+                                       other::$OTHER,
+                                       row_inds::AbstractVector{R},
+                                       col_inds::AbstractVector{Bool})
+        setindex!(crystal, other, row_inds, find(col_inds))
+    end
+  end
+end
+
+Base.setindex!(crystal::Crystal, other::Crystal, ::Colon) =
+  setindex!(crystal, other.atoms, :)
+Base.setindex!(crystal::Crystal, other::Crystal, ::Colon, ::Colon) =
+  setindex!(crystal, other.atoms, :, :)
+Base.setindex!(crystal::Crystal, other::DataFrame, ::Colon, ::Colon) =
+  setindex!(crystal, other, :)
+
+function Base.setindex!(crystal::Crystal, other::DataFrame, ::Colon)
+  for col in 1:size(crystal.atoms, 2)
+    setindex!(crystal, other.atoms[:, col], col)
+  end
+  crystal.atoms
+end
 
 export Crystal, Positions
 

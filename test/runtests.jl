@@ -1,6 +1,6 @@
 module CrystalTest
 using Crystals
-using FactCheck: @fact, facts, context, exitstatus, roughly, exactly
+using FactCheck: @fact, facts, context, exitstatus, roughly, exactly, @fact_throws
 using DataFrames: nrow, ncol, NA, DataArray
 
 contains(x) = y -> x ∈ y
@@ -105,10 +105,85 @@ facts("Check direct indexing") do
       @fact crystal[1, :position] --> Crystals.Position3D(1, 1, 2)
       @fact crystal[2, :position] --> Crystals.Position3D(3, 3, 2)
 
-      crystal[[:this, :specie]] = "Al"
-      @fact crystal[:this] --> ["Al", "Al"]
+      crystal[[:extra_column, :specie]] = "Al"
+      @fact crystal[:extra_column] --> ["Al", "Al"]
       @fact crystal[:specie] --> ["Al", "Al"]
     end
+
+    context("Single-row, Single-Column") do
+      crystal[1, :label] = :aa
+      @fact crystal[1, :label] --> :aa
+
+      crystal[1, :position] = [1, 2, 3]
+      @fact crystal[1, :position] --> [1, 2, 3]
+      @fact typeof(crystal[1, :position]) --> x -> x <: Crystals.PositionTypes
+
+      crystal[1, :position] = 1
+      @fact crystal[1, :position] --> [1, 1, 1]
+
+      crystal[1, :position] = :2
+      @fact crystal[1, :position] --> [2, 2, 2]
+      crystal[1, :position] = :2, :3, :4
+      @fact crystal[1, :position] --> [2, 3, 4]
+
+      @fact_throws MethodError crystal[1, :position] = :a
+      @fact_throws ErrorException crystal[1, :nonexistent] = "Al"
+    end
+
+    context("Single-row, Multi-Column") do
+      crystal[1, [:specie, :label]] = "aha"
+      @fact crystal[1, :specie] --> "aha"
+      @fact crystal[1, :label] --> :aha
+
+      crystal[2, [true, false]] = "zha"
+      @fact crystal[2, :specie] --> "zha"
+      @fact_throws ErrorException crystal[1, [:specie, :nonexistent]] = "Al"
+    end
+
+    context("Multi-row, single-Column") do
+      crystal = Crystal(eye(3), specie=["Al", "O", "O"],
+                      position=transpose([1 1 1; 2 3 4; 4 5 2]),
+                      label=[:+, :-, :0])
+      crystal[[1, 3], :specie] = "Ala"
+      @fact crystal[:specie] --> ["Ala", "O", "Ala"]
+
+      crystal[[2, 3], :specie] = ["H", "B"]
+      @fact crystal[:specie] --> ["Ala", "H", "B"]
+
+      crystal[[true, false, true], 2] = transpose([1 2 3; 4 5 6])
+      @fact crystal[1, :position] --> [1, 2, 3]
+      @fact crystal[2, :position] --> [2, 3, 4]
+      @fact crystal[3, :position] --> [4, 5, 6]
+
+      crystal[[false, true], :position] = [1, 3, 4]
+      @fact crystal[1, :position] --> [1, 2, 3]
+      @fact crystal[2, :position] --> [1, 3, 4]
+      @fact crystal[3, :position] --> [4, 5, 6]
+    end
+
+    context("Multi-row, multi-Column") do
+      crystal = Crystal(eye(3), specie=["Al", "O", "O"],
+                      position=transpose([1 1 1; 2 3 4; 4 5 2]),
+                      label=[:+, :-, :0])
+      other = Crystal(eye(3), specie=["H", "B", "C"],
+                      position=transpose([2 1 2; 3 4 3; 5 2 5]),
+                      label=[:a, :b, :c])
+      crystal[[true, false, true], [:label, :position]] =
+          other[1:2, :]
+      @fact crystal[:label] --> [:a, :-, :b]
+      @fact crystal[1, :position] --> [2, 1, 2]
+      @fact crystal[2, :position] --> [2, 3, 4]
+      @fact crystal[3, :position] --> [3, 4, 3]
+
+      crystal[[false, true, true], [:label, :specie]] = ["aa", "bb"]
+      @fact crystal[:label] --> [:a, "aa", "bb"]
+      @fact crystal[:specie] --> ["Al", "aa", "bb"]
+
+      crystal[1:2, [:label, :specie]] = "A"
+      @fact crystal[:label] --> ["A", "A", "bb"]
+      @fact crystal[:specie] --> ["A", "A", "bb"]
+    end
+
   end
 end
 
