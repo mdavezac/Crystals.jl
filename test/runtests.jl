@@ -88,15 +88,15 @@ facts("Check direct indexing") do
       other = Crystal(eye(3), specie=["Ru", "Ta"],
                         position=transpose([2 4 6; 4 1 2]),
                         label=[:a, :b])
-      crystal[[:specie, :label]] = other
+      crystal[[:specie, :label]] = other[[:specie, :label]]
       @fact crystal[:specie] --> exactly(other[:specie])
       @fact crystal[:label] --> exactly(other[:label])
 
-      crystal[[:specie, :label]] = original.atoms
+      crystal[[:specie, :label]] = original.atoms[[:specie, :label]]
       @fact crystal[:specie] --> exactly(original[:specie])
       @fact crystal[:label] --> exactly(original[:label])
 
-      crystal[[false, true]] = other
+      crystal[[false, true]] = other[[:position]]
       @fact crystal[:specie] --> exactly(original[:specie])
       @fact crystal[:label] --> exactly(original[:label])
       @fact crystal[:position] --> exactly(other[:position])
@@ -154,11 +154,6 @@ facts("Check direct indexing") do
       @fact crystal[1, :position] --> [1, 2, 3]
       @fact crystal[2, :position] --> [2, 3, 4]
       @fact crystal[3, :position] --> [4, 5, 6]
-
-      crystal[[false, true], :position] = [1, 3, 4]
-      @fact crystal[1, :position] --> [1, 2, 3]
-      @fact crystal[2, :position] --> [1, 3, 4]
-      @fact crystal[3, :position] --> [4, 5, 6]
     end
 
     context("Multi-row, multi-Column") do
@@ -169,7 +164,7 @@ facts("Check direct indexing") do
                       position=transpose([2 1 2; 3 4 3; 5 2 5]),
                       label=[:a, :b, :c])
       crystal[[true, false, true], [:label, :position]] =
-          other[1:2, :]
+          other[1:2, [3, 2]]
       @fact crystal[:label] --> [:a, :-, :b]
       @fact crystal[1, :position] --> [2, 1, 2]
       @fact crystal[2, :position] --> [2, 3, 4]
