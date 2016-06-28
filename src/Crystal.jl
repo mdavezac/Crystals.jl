@@ -1,6 +1,7 @@
 module Crystals
 
-using DataFrames: DataFrame, nrow, DataArray, ColumnIndex, index
+using DataFrames: DataFrame, nrow, DataArray, ColumnIndex, index, NA
+import DataFrames: deleterows!, hcat!, nullable!, pool!
 using FixedSizeArrays: FixedVectorNoTuple
 
 
@@ -33,7 +34,7 @@ function positions_type(x::Vector)
   MIN_POSITION_SIZE ≤ length(x) ≤ MAX_POSITION_SIZE ||
     error("Incorrect column vector size")
   position_index = findfirst(u -> length(u) == length(x), PositionTypes.types)
-  PositionTypes.types[position_index]{eltype(x)}
+  PositionTypes.types[position_index]
 end
 
 # Add conversion rules from arrays
@@ -50,11 +51,11 @@ end
 function Positions(x::Matrix)
   MIN_POSITION_SIZE ≤ size(x, 1) ≤ MAX_POSITION_SIZE ||
     error("Incorrect column vector size")
-  return convert(Vector{positions_type(x[:, 1])}, x)
+  return convert(Vector{positions_type(x[:, 1]){eltype(x)}}, x)
 end
 Positions(x::DataArray) = x
 function Positions(x::Vector)
-  T = positions_type(x)::Type
+  T = positions_type(x){eltype(x)}
   T[T(x)]
 end
 
@@ -82,7 +83,7 @@ type Crystal{T} <: AbstractCrystal
     :position ∈ names(atoms) || nrow(atoms) == 0 ||
       error("Input Dataframe has atoms without positions")
     if nrow(atoms) == 0
-      atoms[:position] = Vector{positions_type(cell[:, 1])}()
+      atoms[:position] = Vector{positions_type(cell[:, 1]){eltype(cell)}}()
     else
       eltype(atoms[:position]) <: PositionTypes ||
         error("Positions do not have acceptable type")
@@ -151,6 +152,63 @@ Base.setindex!(crystal::Crystal, v::Matrix, row::Any, col::Any) =
 Base.setindex!(crystal::Crystal, v::Any, row::Any, col::Any) =
   setindex!(crystal.atoms, v, row, col)
 
-export Crystal, Positions
+# Special deletion assignment
+Base.setindex!(crystal::Crystal, x::Void, col::Int) = delete!(crystal, col)
+Base.empty!(crystal::Crystal) = (empty!(crystal.atoms); crystal)
+Base.insert!(crystal::Crystal, col::Int, item::AbstractVector, name::Symbol) =
+  (insert!(crystal.atoms, col, item, name); crystal)
+
+Base.merge!(crystal::Crystal, others::DataFrame...) =
+  (merge!(crystal.atoms, others...); crystal)
+Base.copy!(crystal::Crystal) =
+  Crystal{eltype(crystal.cell)}(
+    copy(crystal.cell), crystal.scale, copy(crystal.atoms))
+Base.deepcopy(crystal::Crystal) =
+  Crystal{eltype(crystal.cell)}(
+    deepcopy(crystal.cell), crystal.scale, deepcopy(crystal.atoms))
+
+Base.delete!(crystal::Crystal, cols::Any) =
+  (delete!(crystal.atoms, cols); crystal)
+deleterows!(crystal::Crystal, cols::Any) =
+  (deleterows!(crystal.atoms, cols); crystal)
+hcat!(crystal::Crystal, x...) = (hcat!(crystal.atoms, x...); crystal)
+hcat(crystal::Crystal, x...) = hcat!(copy(crystal), x...)
+nullable!(crystal::Crystal, x...) = (nullable!(crystal.atoms, x...); crystal)
+pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
+Base.append!(crystal::Crystal, atoms::DataFrame) =
+  (append!(crystal.atoms, atoms); crystal)
+Base.push!(crystal::Crystal, x) = push!(crystal.atoms, x)
+
+function Base.push!(crystal::Crystal, position::PositionTypes; kwargs...)
+  if length(position) ≠ size(crystal.cell, 1)
+    error("Dimensionality of input position and crystal do not match")
+  end
+  row = Any[NA for u in 1:length(crystal.atoms)]
+  row[index(crystal.atoms)[:position]] = position
+  missing = Tuple{Symbol, Any}[]
+  const colnames = names(crystal)
+  for (name, value) in kwargs
+    if name ∉ colnames
+      push!(missing, (name, value))
+    else
+      row[index(crystal.atoms)[name]] = value
+    end
+  end
+  push!(crystal, row)
+  for (name, value) in missing
+    # given twice, makes no sense
+    @assert name ∉ names(crystal)
+    crystal[name] = fill(value, size(crystal, 1))
+    crystal[1:(size(crystal, 1) - 1), name] = NA
+  end
+end
+
+function Base.push!{T <: Real}(crystal::Crystal, position::Vector{T}; kwargs...)
+  pos = positions_type(position){eltype(crystal.cell)}(position)
+  Base.push!(crystal, pos; kwargs...)
+end
+
+
+export Crystal, Positions, deleterows!, nullable!
 
 end # module
