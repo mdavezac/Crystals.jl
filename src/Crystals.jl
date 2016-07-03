@@ -27,7 +27,7 @@ properties:
 module Crystals
 
 using DataFrames: DataFrame, nrow, DataArray, ColumnIndex, index, NA
-import DataFrames: deleterows!, hcat!, nullable!, pool!
+import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact
 using FixedSizeArrays: FixedVectorNoTuple
 
 
@@ -83,6 +83,15 @@ Positions(x::DataArray) = x
 function Positions(x::Vector)
   T = positions_type(x){eltype(x)}
   T[T(x)]
+end
+
+function Position(x::Vector)
+  T = positions_type(x){eltype(x)}
+  convert(T, x)
+end
+function Position{T <: Real}(x::T...)
+  position_index = findfirst(u -> length(u) == length(x), PositionTypes.types)
+  PositionTypes.types[position_index](x...)
 end
 
 abstract AbstractCrystal
@@ -198,7 +207,7 @@ Base.delete!(crystal::Crystal, cols::Any) =
 deleterows!(crystal::Crystal, cols::Any) =
   (deleterows!(crystal.atoms, cols); crystal)
 hcat!(crystal::Crystal, x...) = (hcat!(crystal.atoms, x...); crystal)
-hcat(crystal::Crystal, x...) = hcat!(copy(crystal), x...)
+Base.hcat(crystal::Crystal, x...) = hcat!(copy(crystal), x...)
 nullable!(crystal::Crystal, x...) = (nullable!(crystal.atoms, x...); crystal)
 pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
 Base.append!(crystal::Crystal, atoms::DataFrame) =
@@ -234,7 +243,24 @@ function Base.push!{T <: Real}(crystal::Crystal, position::Vector{T}; kwargs...)
   Base.push!(crystal, pos; kwargs...)
 end
 
+function Base.show(io::IO, crystal::Crystal, args...; kwargs...)
+  println(io, typeof(crystal))
+  println(io, "cell: ", crystal.cell)
+  println(io, "scale: ", crystal.scale)
+  println(io, crystal.atoms)
+end
 
-export Crystal, Positions, deleterows!, nullable!
+
+function Base.showcompact(io::IO, pos::PositionTypes)
+  result = string(pos)
+  print(io, result[findfirst(result, '('):end])
+end
+
+function ourshowcompact(io::IO, pos::PositionTypes)
+  result = string(pos)
+  print(io, result[findfirst(result, '(') + 1:end - 1])
+end
+
+export Crystal, Positions, deleterows!, nullable!, Position
 
 end # module
