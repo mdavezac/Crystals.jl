@@ -32,7 +32,8 @@ using FixedSizeArrays: FixedVectorNoTuple
 
 include("Structure.jl")
 include("SpaceGroup.jl")
+include("Gruber.jl")
 
-export Crystal, Positions, deleterows!, nullable!, Position
+export Crystal, Positions, deleterows!, nullable!, Position, gruber
 
 end # module
