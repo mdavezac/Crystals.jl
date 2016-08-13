@@ -23,7 +23,6 @@ properties:
                       species=["Al", "O", "O"],
                       label=[:+, :-, :-]
 """
-
 module Crystals
 
 using DataFrames: DataFrame, nrow, DataArray, ColumnIndex, index, NA
@@ -31,8 +30,9 @@ import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact
 using FixedSizeArrays: FixedVectorNoTuple
 
 include("Structure.jl")
-include("SpaceGroup.jl")
+# include("SpaceGroup.jl")
 include("Gruber.jl")
+import .Gruber: gruber
 
 export Crystal, Positions, deleterows!, nullable!, Position, gruber
 
