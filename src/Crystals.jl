@@ -34,6 +34,9 @@ include("Structure.jl")
 include("Gruber.jl")
 import .Gruber: gruber
 
-export Crystal, Positions, deleterows!, nullable!, Position, gruber
+include("SNF.jl")
+import .SNF: smith_normal_form
+
+export Crystal, Positions, deleterows!, nullable!, Position, gruber, smith_normal_form
 
 end # module

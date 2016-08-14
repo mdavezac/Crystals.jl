@@ -8,7 +8,8 @@ contains(x) = y -> x ∈ y
 
 # include("Crystal.jl")
 # include("SpaceGroup.jl")
-include("Gruber.jl")
+# include("Gruber.jl")
+include("SNF.jl")
 
 exitstatus()
 end
