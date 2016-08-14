@@ -9,7 +9,7 @@ function is_integer(; tolerance=1e-12)
 end
 
 facts("Gruber cell") do
-  facts("Is integer matrices") do
+  context("Is integer matrices") do
     cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]
     const lim = 5
  
@@ -23,7 +23,7 @@ facts("Gruber cell") do
     end
   end
 
-  facts("Regressions") do
+  context("Regressions") do
     cells = Any[
        [0.10658442  0.85196214  0.11820731;
         0.08762888  0.06597675  0.33166737;
@@ -46,11 +46,11 @@ facts("Gruber cell") do
     end
   end
 
-  facts("Error if singular") do
+  context("Error if singular") do
     @fact_throws ErrorException gruber([1 0 0; 0 1 0; 0 2 0])
   end
 
-  facts("Error if max iter") do
+  context("Error if max iter") do
     @fact_throws ErrorException gruber([1 0 0; 1 1  0; 4 5 1]; itermax=2)
   end
 end
