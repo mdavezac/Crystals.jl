@@ -1,7 +1,7 @@
 module CrystalTest
 using Crystals
 using FactCheck: @fact, facts, context, exitstatus, roughly,
-                 exactly, @fact_throws, greater_than
+                 exactly, @fact_throws, greater_than, not
 using DataFrames: nrow, ncol, NA, DataArray, DataFrame
 
 contains(x) = y -> x ∈ y
