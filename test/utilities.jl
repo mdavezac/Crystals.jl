@@ -47,3 +47,31 @@ facts("Fold back around origin") do
     @fact -0.5 .< inv(cell) * folded .≤ 0.5 --> all
   end
 end
+
+function none_smaller(position::Vector, cell::Matrix)
+  const d = norm(position)
+  for i = -2:2, j = -2:2, k = -2:2
+    i == j == k == 0 && continue
+    norm(position + cell * [i, j, k]) < d - 1e-12  && return false
+  end
+  true
+end
+none_smaller(cell::Matrix) = x -> none_smaller(x, cell)
+
+facts("Fold back into voronoi") do
+  cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]
+
+  for i in 1:20
+    position = cell * (rand(3) + rand(Int8, (3, )))
+    folded = into_voronoi(position, cell)
+    @fact is_periodic(position, folded, cell) --> true
+    @fact folded --> none_smaller(cell)
+
+    position = cell * (rand((3, 10)) + rand(Int8, (3, 10)))
+    folded = into_voronoi(position, cell)
+    @fact is_periodic(position, folded, cell) --> all
+    for i = 1:size(position, 2)
+      @fact folded[:, i] --> none_smaller(cell)
+    end
+  end
+end

@@ -40,11 +40,11 @@ Folds vector into first Brillouin zone of the input cell
 Returns the periodic image with the smallest possible norm.
 """
 function into_voronoi(pos, cell)
-  result = origin_centered(pos, cell)
-  zcentered = deepcopy(result)
-  norms = [norm(result[:, i]) for i in 1:size(result, 2)]
+  zcentered = origin_centered(pos, cell)
+  result = deepcopy(zcentered)
+  norms = [norm(zcentered[:, i]) for i in 1:size(zcentered, 2)]
   for n in 1:length(norms)
-    for i = -1:1:2, j = -1:1:2, k = -1:1:2
+    for i = -1:1, j = -1:1, k = -1:1
       translation = cell * [i, j, k]
       position = zcentered[:, n] + translation 
       d = norm(position)
