@@ -33,10 +33,14 @@ include("Structure.jl")
 # include("SpaceGroup.jl")
 include("Gruber.jl")
 import .Gruber: gruber
+const default_tolerance = Gruber.default_tolerance
 
 include("SNF.jl")
 import .SNF: smith_normal_form
 
-export Crystal, Positions, deleterows!, nullable!, Position, gruber, smith_normal_form
+include("utilities.jl")
+
+export Crystal, Positions, deleterows!, nullable!, Position, gruber, smith_normal_form,
+       into_cell, into_voronoi, is_periodic, origin_centered
 
 end # module

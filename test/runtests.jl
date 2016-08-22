@@ -9,7 +9,8 @@ contains(x) = y -> x ∈ y
 # include("Crystal.jl")
 # include("SpaceGroup.jl")
 # include("Gruber.jl")
-include("SNF.jl")
+# include("SNF.jl")
+include("utilities.jl")
 
 exitstatus()
 end
