@@ -40,7 +40,7 @@ import .SNF: smith_normal_form
 
 include("utilities.jl")
 
-export Crystal, PositionArray, PositionDataArray, deleterows!,
+export Crystal, Position, PositionArray, PositionDataArray, deleterows!,
       nullable!, Position, gruber, smith_normal_form, into_cell, into_voronoi,
       is_periodic, origin_centered, supercell
 

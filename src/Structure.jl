@@ -18,7 +18,7 @@ for s in 2:6
 end
 
 " All acceptable types for positions "
-typealias PositionType{T <: Real} Union{
+typealias Position{T <: Real} Union{
   Position2D{T}, Position3D{T},
   Position4D{T}, Position5D{T}, Position6D{T}
 }
@@ -34,27 +34,38 @@ typealias PositionDataArray{T <: Real} Union{
   DataArray{Position6D{T}, 1}
 }
 
-const MAX_POSITION_SIZE = maximum([length(u) for u in PositionType{Real}.types])
-const MIN_POSITION_SIZE = minimum([length(u) for u in PositionType{Real}.types])
+const MAX_POSITION_SIZE = maximum([length(u) for u in Position{Real}.types])
+const MIN_POSITION_SIZE = minimum([length(u) for u in Position{Real}.types])
 function positions_type(x::Vector)
   MIN_POSITION_SIZE ≤ length(x) ≤ MAX_POSITION_SIZE ||
     error("Incorrect column vector size")
-  position_index = findfirst(u -> length(u) == length(x), PositionType{eltype(x)}.types)
-  PositionType{eltype(x)}.types[position_index]
+  position_index = findfirst(u -> length(u) == length(x), Position{eltype(x)}.types)
+  Position{eltype(x)}.types[position_index]
 end
 
 # Add conversion rules from arrays
-Base.convert{T <: PositionType}(::Type{Vector{T}}, x::Matrix) =
+Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix) =
   T[T(x[:, u]) for u in 1:size(x, 2)]
-Base.convert{T <: PositionType}(::Type{Array}, x::Vector{T}) =
+Base.convert{T <: Position}(::Type{Array}, x::Vector{T}) =
     eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
-function Base.convert{T <: PositionType}(::Type{Array}, x::DataArray{T, 1})
+function Base.convert{T <: Position}(::Type{Array}, x::DataArray{T, 1})
   any(isna(x)) && error("Cannot convert DataArray with NA's to desired type")
   eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
 end
-function Base.convert{T <: PositionType}(::Type{Vector{T}}, x::Matrix)
+function Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix)
   length(T) == size(x, 1) || error("Columns cannot be converted to one of $T")
   T[T(x[:, u]) for u in 1:size(x, 2)]
+end
+function Base.convert(::Type{Position}, x::Vector)
+  if eltype(x) <: Real
+    const INNER = eltype(x)
+  else
+    const reducer = (x, y) -> promote_type(x, typeof(y))
+    const INNER = reduce(reducer, typeof(x[1]), x[2:end])
+  end
+  k = findfirst(X -> length(X) == size(x, 1), Position{INNER}.types)
+  k == 0 && error("Columns cannot be converted to one of Crystal.Position")
+  convert(Position{INNER}.types[k], x)
 end
 function Base.convert(::Type{PositionArray}, x::Matrix)
   if eltype(x) <: Real
@@ -63,9 +74,9 @@ function Base.convert(::Type{PositionArray}, x::Matrix)
     const reducer = (x, y) -> promote_type(x, typeof(y))
     const INNER = reduce(reducer, typeof(x[1]), x[2:end])
   end
-  k = findfirst(X -> length(X) == size(x, 1), PositionType{INNER}.types)
-  k == 0 && error("Columns cannot be converted to one of Crystal.PositionType")
-  convert(Vector{PositionType{INNER}.types[k]}, x)
+  k = findfirst(X -> length(eltype(X)) == size(x, 1), PositionArray{INNER}.types)
+  k == 0 && error("Columns cannot be converted to one of Crystal.Position")
+  convert(PositionArray{INNER}.types[k], x)
 end
 function Base.convert(::Type{PositionDataArray}, x::Matrix)
   if eltype(x) <: Real
@@ -115,7 +126,7 @@ type Crystal{T} <: AbstractCrystal
     if nrow(atoms) == 0
       atoms[:position] = Vector{positions_type(cell[:, 1])}()
     else
-      eltype(atoms[:position]) <: PositionType ||
+      eltype(atoms[:position]) <: Position ||
         error("Positions do not have acceptable type")
       size(cell, 1) == length(eltype(atoms[:position])) ||
         error("Cell and position dimensionality do not match")
@@ -220,7 +231,7 @@ Base.append!(crystal::Crystal, atoms::DataFrame) =
   (append!(crystal.atoms, atoms); crystal)
 Base.push!(crystal::Crystal, x) = push!(crystal.atoms, x)
 
-function Base.push!(crystal::Crystal, position::PositionType; kwargs...)
+function Base.push!(crystal::Crystal, position::Position; kwargs...)
   if length(position) ≠ size(crystal.cell, 1)
     error("Dimensionality of input position and crystal do not match")
   end
@@ -257,12 +268,12 @@ function Base.show(io::IO, crystal::Crystal, args...; kwargs...)
 end
 
 
-function Base.showcompact(io::IO, pos::PositionType)
+function Base.showcompact(io::IO, pos::Position)
   result = string(pos)
   print(io, result[findfirst(result, '('):end])
 end
 
-function ourshowcompact(io::IO, pos::PositionType)
+function ourshowcompact(io::IO, pos::Position)
   result = string(pos)
   print(io, result[findfirst(result, '(') + 1:end - 1])
 end

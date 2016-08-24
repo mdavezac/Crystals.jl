@@ -1,3 +1,12 @@
+facts("Convertion vector <--> position") do
+   array = [1, 2, 3]
+   position = convert(Position, array)
+   @fact typeof(position) --> exactly(Crystals.Position3D{eltype(array)})
+   @fact [position...] --> array
+   @fact typeof(convert(Array, position)) --> typeof(array)
+   @fact convert(Array, position) --> array
+end
+
 facts("Convertions matrix <--> array of positions") do
   context("Automatic conversion") do
     matrix = transpose([1 2 3; 4 5 6])
@@ -159,7 +168,7 @@ facts("Check direct indexing") do
 
       crystal[1, :position] = [1, 2, 3]
       @fact crystal[1, :position] --> [1, 2, 3]
-      @fact typeof(crystal[1, :position]) --> x -> x <: Crystals.PositionType
+      @fact typeof(crystal[1, :position]) --> x -> x <: Crystals.Position
 
       crystal[1, :position] = 1
       @fact crystal[1, :position] --> [1, 1, 1]
