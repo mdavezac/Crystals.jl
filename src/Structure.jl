@@ -1,3 +1,5 @@
+using DataFrames: AbstractDataFrame, isna
+
 for s in 2:6
   local name = Symbol("Position$(s)D")
   local docstring = "Position for $s-dimensional crystals"
@@ -16,50 +18,76 @@ for s in 2:6
 end
 
 " All acceptable types for positions "
-typealias PositionTypes Union{
-  Position2D, Position3D,
-  Position4D, Position5D, Position6D
+typealias PositionType{T <: Real} Union{
+  Position2D{T}, Position3D{T},
+  Position4D{T}, Position5D{T}, Position6D{T}
+}
+" Alias to vectors of positions "
+typealias PositionArray{T <: Real} Union{
+  Vector{Position2D{T}}, Vector{Position3D{T}},
+  Vector{Position4D{T}}, Vector{Position5D{T}}, Vector{Position6D{T}}
+}
+" Alias to data array of positions "
+typealias PositionDataArray{T <: Real} Union{
+  DataArray{Position2D{T}, 1}, DataArray{Position3D{T}, 1},
+  DataArray{Position4D{T}, 1}, DataArray{Position5D{T}, 1},
+  DataArray{Position6D{T}, 1}
 }
 
-const MAX_POSITION_SIZE = maximum([length(u) for u in PositionTypes.types])
-const MIN_POSITION_SIZE = minimum([length(u) for u in PositionTypes.types])
+const MAX_POSITION_SIZE = maximum([length(u) for u in PositionType{Real}.types])
+const MIN_POSITION_SIZE = minimum([length(u) for u in PositionType{Real}.types])
 function positions_type(x::Vector)
   MIN_POSITION_SIZE ≤ length(x) ≤ MAX_POSITION_SIZE ||
     error("Incorrect column vector size")
-  position_index = findfirst(u -> length(u) == length(x), PositionTypes.types)
-  PositionTypes.types[position_index]
+  position_index = findfirst(u -> length(u) == length(x), PositionType{eltype(x)}.types)
+  PositionType{eltype(x)}.types[position_index]
 end
 
 # Add conversion rules from arrays
-for position_type in PositionTypes.types
-  @eval begin
-    function Base.convert{T <: Real}(::Type{Vector{$(position_type){T}}}, x::Matrix)
-      size(x, 1) == $(length(position_type)) || error("Incompatible vector size")
-      $(position_type){T}[$(position_type)(x[:, u]) for u in 1:size(x, 2)]
-    end
+Base.convert{T <: PositionType}(::Type{Vector{T}}, x::Matrix) =
+  T[T(x[:, u]) for u in 1:size(x, 2)]
+Base.convert{T <: PositionType}(::Type{Array}, x::Vector{T}) =
+    eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
+function Base.convert{T <: PositionType}(::Type{Array}, x::DataArray{T, 1})
+  any(isna(x)) && error("Cannot convert DataArray with NA's to desired type")
+  eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
+end
+function Base.convert{T <: PositionType}(::Type{Vector{T}}, x::Matrix)
+  length(T) == size(x, 1) || error("Columns cannot be converted to one of $T")
+  T[T(x[:, u]) for u in 1:size(x, 2)]
+end
+function Base.convert(::Type{PositionArray}, x::Matrix)
+  if eltype(x) <: Real
+    const INNER = eltype(x)
+  else
+    const reducer = (x, y) -> promote_type(x, typeof(y))
+    const INNER = reduce(reducer, typeof(x[1]), x[2:end])
   end
+  k = findfirst(X -> length(X) == size(x, 1), PositionType{INNER}.types)
+  k == 0 && error("Columns cannot be converted to one of Crystal.PositionType")
+  convert(Vector{PositionType{INNER}.types[k]}, x)
+end
+function Base.convert(::Type{PositionDataArray}, x::Matrix)
+  if eltype(x) <: Real
+    const INNER = eltype(x)
+  else
+    const reducer = (x, y) -> promote_type(x, typeof(y))
+    const INNER = reduce(reducer, typeof(x[1]), x[2:end])
+  end
+
+  k = findfirst(X -> length(eltype(X)) == size(x, 1), PositionArray{INNER}.types)
+  k == 0 && error("Columns cannot be converted to one of Crystal.PositionArray")
+  const OUTER = PositionArray{INNER}.types[k]
+  k = findfirst(X -> length(eltype(X)) == size(x, 1), PositionDataArray{INNER}.types)
+  k == 0 && error("Columns cannot be converted to one of Crystal.PositionDataArray")
+  const DATAARRAY = PositionDataArray{INNER}.types[k]
+  DATAARRAY(convert(OUTER, x))
 end
 
-" Converts inputs to something a DataArray of Positions will understand "
-function Positions(x::Matrix)
-  MIN_POSITION_SIZE ≤ size(x, 1) ≤ MAX_POSITION_SIZE ||
-    error("Incorrect column vector size")
-  return convert(Vector{positions_type(x[:, 1]){eltype(x)}}, x)
-end
-Positions(x::DataArray) = x
-function Positions(x::Vector)
-  T = positions_type(x){eltype(x)}
-  T[T(x)]
-end
-
-function Position(x::Vector)
-  T = positions_type(x){eltype(x)}
-  convert(T, x)
-end
-function Position{T <: Real}(x::T...)
-  position_index = findfirst(u -> length(u) == length(x), PositionTypes.types)
-  PositionTypes.types[position_index](x...)
-end
+Base.convert(::Type{PositionArray}, x::Vector) =
+  convert(PositionArray, transpose(transpose(x)))
+Base.convert(::Type{PositionDataArray}, x::Vector) =
+  convert(PositionDataArray, transpose(transpose(x)))
 
 abstract AbstractCrystal
 
@@ -85,9 +113,9 @@ type Crystal{T} <: AbstractCrystal
     :position ∈ names(atoms) || nrow(atoms) == 0 ||
       error("Input Dataframe has atoms without positions")
     if nrow(atoms) == 0
-      atoms[:position] = Vector{positions_type(cell[:, 1]){eltype(cell)}}()
+      atoms[:position] = Vector{positions_type(cell[:, 1])}()
     else
-      eltype(atoms[:position]) <: PositionTypes ||
+      eltype(atoms[:position]) <: PositionType ||
         error("Positions do not have acceptable type")
       size(cell, 1) == length(eltype(atoms[:position])) ||
         error("Cell and position dimensionality do not match")
@@ -103,7 +131,7 @@ function Crystal(cell::Matrix, scale=1::Real; kwargs...)
       push!(nkwargs, kwargs[i])
       continue
     end
-    position = Positions(kwargs[i][2])
+    position = convert(PositionDataArray, kwargs[i][2])
     size(cell, 1) == length(eltype(position)) ||
       error("Dimensionality of cell and positions do not match")
     push!(nkwargs, (:position, position))
@@ -118,7 +146,7 @@ function Crystal(cell::Matrix, columns::Vector{Any}, names::Vector{Symbol},
   for (i, (value, name)) in enumerate(zip(columns[:], names[:]))
     name == :position || continue
 
-    columns[i] = Positions(value)
+    columns[i] = convert(PositionDataArray, value)
     size(cell, 1) == length(eltype(columns[i])) ||
       error("Dimensionality of cell and positions do not match")
   end
@@ -144,13 +172,13 @@ Base.ndims(crystal::Crystal) = ndims(crystal.atoms)
 Base.setindex!(crystal::Crystal, v::Crystal, col::Any) =
   setindex!(crystal.atoms, v.atoms, col)
 Base.setindex!(crystal::Crystal, v::Matrix, col::Any) =
-  setindex!(crystal.atoms, Positions(v), col)
+  setindex!(crystal.atoms, convert(PositionDataArray, v), col)
 Base.setindex!(crystal::Crystal, v::Any, col::Any) =
   setindex!(crystal.atoms, v, col)
 Base.setindex!(crystal::Crystal, v::Crystal, row::Any, col::Any) =
   setindex!(crystal.atoms, v.atoms, row, col)
 Base.setindex!(crystal::Crystal, v::Matrix, row::Any, col::Any) =
-  setindex!(crystal.atoms, Positions(v), row, col)
+  setindex!(crystal.atoms, convert(PositionDataArray, v), row, col)
 Base.setindex!(crystal::Crystal, v::Any, row::Any, col::Any) =
   setindex!(crystal.atoms, v, row, col)
 
@@ -175,13 +203,24 @@ deleterows!(crystal::Crystal, cols::Any) =
   (deleterows!(crystal.atoms, cols); crystal)
 hcat!(crystal::Crystal, x...) = (hcat!(crystal.atoms, x...); crystal)
 Base.hcat(crystal::Crystal, x...) = hcat!(copy(crystal), x...)
+Base.vcat(crystal::Crystal) = crystal
+"""
+`vcat(crys::Crystal, dfs::AbstractDataFrame...)`
+
+Concatenates atoms into crystal
+"""
+function Base.vcat(crys::Crystal, dfs::AbstractDataFrame...)
+  result = Crystal(crys.cell, crys.scale)
+  result.atoms = vcat(crys.atoms, dfs...)
+  result
+end
 nullable!(crystal::Crystal, x...) = (nullable!(crystal.atoms, x...); crystal)
 pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
 Base.append!(crystal::Crystal, atoms::DataFrame) =
   (append!(crystal.atoms, atoms); crystal)
 Base.push!(crystal::Crystal, x) = push!(crystal.atoms, x)
 
-function Base.push!(crystal::Crystal, position::PositionTypes; kwargs...)
+function Base.push!(crystal::Crystal, position::PositionType; kwargs...)
   if length(position) ≠ size(crystal.cell, 1)
     error("Dimensionality of input position and crystal do not match")
   end
@@ -206,7 +245,7 @@ function Base.push!(crystal::Crystal, position::PositionTypes; kwargs...)
 end
 
 function Base.push!{T <: Real}(crystal::Crystal, position::Vector{T}; kwargs...)
-  pos = positions_type(position){eltype(crystal.cell)}(position)
+  pos = positions_type(position)(position)
   Base.push!(crystal, pos; kwargs...)
 end
 
@@ -218,12 +257,14 @@ function Base.show(io::IO, crystal::Crystal, args...; kwargs...)
 end
 
 
-function Base.showcompact(io::IO, pos::PositionTypes)
+function Base.showcompact(io::IO, pos::PositionType)
   result = string(pos)
   print(io, result[findfirst(result, '('):end])
 end
 
-function ourshowcompact(io::IO, pos::PositionTypes)
+function ourshowcompact(io::IO, pos::PositionType)
   result = string(pos)
   print(io, result[findfirst(result, '(') + 1:end - 1])
 end
+
+nrow(crystal::Crystal) = nrow(crystal.atoms)

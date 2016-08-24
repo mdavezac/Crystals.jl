@@ -25,8 +25,8 @@ properties:
 """
 module Crystals
 
-using DataFrames: DataFrame, nrow, DataArray, ColumnIndex, index, NA
-import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact
+using DataFrames: DataFrame, DataArray, ColumnIndex, index, NA
+import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact, nrow
 using FixedSizeArrays: FixedVectorNoTuple
 
 include("Structure.jl")
@@ -40,7 +40,8 @@ import .SNF: smith_normal_form
 
 include("utilities.jl")
 
-export Crystal, Positions, deleterows!, nullable!, Position, gruber, smith_normal_form,
-       into_cell, into_voronoi, is_periodic, origin_centered
+export Crystal, PositionArray, PositionDataArray, deleterows!,
+      nullable!, Position, gruber, smith_normal_form, into_cell, into_voronoi,
+      is_periodic, origin_centered, supercell
 
 end # module

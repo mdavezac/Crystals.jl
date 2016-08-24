@@ -1,8 +1,58 @@
-facts("Positions") do
-  positions = Positions([1 2; 3 4])
-  @fact length(positions) --> 2
-  @fact positions[1] --> [1, 3]
-  @fact positions[2] --> [2, 4]
+facts("Convertions matrix <--> array of positions") do
+  context("Automatic conversion") do
+    matrix = transpose([1 2 3; 4 5 6])
+    positions = convert(PositionArray, matrix)
+
+    @fact eltype(positions) --> exactly(Crystals.Position3D{eltype(matrix)})
+    @fact typeof(positions) -->
+    exactly(Vector{Crystals.Position3D{eltype(matrix)}})
+    @fact length(positions) --> size(matrix, 2)
+    @fact length(positions[1]) --> size(matrix, 1)
+    for i = 1:length(positions)
+      @fact positions[i] --> matrix[:, i]
+    end
+
+    back = convert(Array, positions)
+    @fact typeof(back) --> typeof(matrix)
+    @fact size(back) --> size(matrix)
+    @fact back --> roughly(matrix)
+
+    to_integer = convert(PositionArray, [1 2; 2 3])
+    @fact eltype(eltype(to_integer)) <: Integer --> true
+    to_float = convert(PositionArray, [1 2.; 2 3])
+    @fact eltype(eltype(to_float)) <: AbstractFloat  --> true
+  end
+
+  context("Explicit element type conversion") do
+    positions = convert(Vector{Crystals.Position2D{Int8}}, [1 2; 3 4])
+    @fact eltype(eltype(positions)) --> Int8
+  end
+end
+
+facts("Convertions dataarray <--> array of positions") do
+  context("Automatic conversion") do
+    matrix = transpose([1 2 3; 4 5 6])
+    positions = convert(PositionDataArray, matrix)
+
+    @fact eltype(positions) --> exactly(Crystals.Position3D{eltype(matrix)})
+    @fact typeof(positions) -->
+        exactly(DataArray{Crystals.Position3D{eltype(matrix)}, 1})
+    @fact length(positions) --> size(matrix, 2)
+    @fact length(positions[1]) --> size(matrix, 1)
+    for i = 1:length(positions)
+      @fact positions[i] --> matrix[:, i]
+    end
+
+    back = convert(Array, positions)
+    @fact typeof(back) --> typeof(matrix)
+    @fact size(back) --> size(matrix)
+    @fact back --> roughly(matrix)
+
+    to_integer = convert(PositionArray, [1 2; 2 3])
+    @fact eltype(eltype(to_integer)) <: Integer --> true
+    to_float = convert(PositionArray, [1 2.; 2 3])
+    @fact eltype(eltype(to_float)) <: AbstractFloat  --> true
+  end
 end
 
 facts("Construction") do
@@ -109,7 +159,7 @@ facts("Check direct indexing") do
 
       crystal[1, :position] = [1, 2, 3]
       @fact crystal[1, :position] --> [1, 2, 3]
-      @fact typeof(crystal[1, :position]) --> x -> x <: Crystals.PositionTypes
+      @fact typeof(crystal[1, :position]) --> x -> x <: Crystals.PositionType
 
       crystal[1, :position] = 1
       @fact crystal[1, :position] --> [1, 1, 1]
