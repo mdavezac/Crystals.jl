@@ -12,7 +12,7 @@ function hart_forcade(lattice::Matrix, supercell::Matrix; digits=8)
 
   snf, left, right = smith_normal_form(fractional)
 
-  left * inv(cell), diag(snf)
+  left * inv(lattice), diag(snf)
 end
 
 """
@@ -24,14 +24,17 @@ the input are arrays of positions.
 is_periodic(a::Matrix, b::Matrix, cell::Matrix; tolerance=default_tolerance) =
   all(abs(origin_centered(a - b, cell)) .< tolerance, 1)
 
-is_periodic(a::Vector, b::Vector, cell::Matrix; tolerance=default_tolerance) =
+function is_periodic(a::Union{Position, Vector},
+                     b::Union{Position, Vector},
+                     cell::Matrix; tolerance=default_tolerance)
   all(abs(origin_centered(a - b, cell)) .< tolerance)
+end
 
 """ Folds periodic positions into cell """
-into_cell(pos::Array, cell::Matrix) = cell * mod(inv(cell) * pos, 1)
+into_cell(pos, cell::Matrix) = cell * mod(inv(cell) * pos, 1)
 
 """ Folds vector back to origin """
-origin_centered(pos::Array, cell::Matrix) =
+origin_centered(pos, cell::Matrix) =
     cell * (mod(inv(cell) * pos .+ 0.5, -1) .+ 0.5)
 
 """
@@ -39,7 +42,7 @@ Folds vector into first Brillouin zone of the input cell
 
 Returns the periodic image with the smallest possible norm.
 """
-function into_voronoi(pos, cell)
+function into_voronoi(pos, cell::Matrix)
   zcentered = origin_centered(pos, cell)
   result = deepcopy(zcentered)
   norms = [norm(zcentered[:, i]) for i in 1:size(zcentered, 2)]
@@ -57,30 +60,31 @@ function into_voronoi(pos, cell)
   result
 end
 
-# """ Creates a supercell of an input lattice """
-# function supercell(lattice::Crystal, supercell):
-#   length(lattice) == 0 && error("Lattice is empty")
-#   result = Crystal(lattice.cell, lattice.scale)
-#
-#   transform, quotient = hart_forcade(lattice.cell, result.cell)
-#   itransform = inv(transform)
-#   icell = inv(cell)
-#   for i = 1:quotient[1], j = 1:quotient[2], k = 1:quotient[3]
-#     atoms = deepcopy(lattice.atoms)
-#     atoms[:position] = 
-#   end
-#
-#     invtransform = inv(transform.transform)
-#     invcell = inv(result.cell)
-#
-#     for i in range(transform.quotient[0]):
-#       for j in range(transform.quotient[1]):
-#         for k in range(transform.quotient[2]):
-#           pos = dot(invtransform, array([i, j, k], dtype='float64'))
-#
-#           for l, site in enumerate(lattice):
-#             atom = site.copy()
-#             atom.pos = into_cell(pos + site.pos, result.cell, invcell)
-#             atom.site = l
-#             result.append(atom)
-#             return result;
+""" Creates a supercell of an input lattice """
+function supercell(lattice::Crystal, supercell; site_id=true, cell_id=true)
+  nrow(lattice) == 0 && error("Lattice is empty")
+
+  transform, quotient = hart_forcade(lattice.cell, supercell)
+  itransform = inv(transform)
+  atoms = deepcopy(lattice.atoms)
+  if site_id
+    atoms[:site_id] = 1:nrow(atoms)
+  end
+  if cell_id
+    atoms[:cell_id] = convert(Position, [0, 0, 0])
+  end
+
+
+  all_atoms = Any[]
+  for i = 1:quotient[1], j = 1:quotient[2], k = 1:quotient[3]
+    for n in 1:nrow(atoms)
+      atoms[n, :position] = into_cell(
+        lattice[n, :position] + itransform * [i, j, k], supercell)
+    end
+    if cell_id
+      atoms[:, :cell_id] = convert(Position, [i, j, k])
+    end
+    push!(all_atoms, deepcopy(atoms))
+  end
+  vcat(Crystal(supercell, lattice.scale), all_atoms...)
+end

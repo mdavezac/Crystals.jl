@@ -75,3 +75,31 @@ facts("Fold back into voronoi") do
     end
   end
 end
+
+facts("Supercell") do
+  lattice = Crystal(
+    [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0], 2.0,
+    position=[0 0.25; 0 0.25; 0 0.25], species=["In", "Ga"]
+  )
+
+  result = supercell(lattice, lattice.cell * [-1 1 1; 1 -1 1; 1 1 -1])
+  @fact result.cell --> roughly(eye(3))
+  @fact result.scale --> roughly(lattice.scale)
+  @fact nrow(result) % nrow(lattice) --> 0
+  const ncells =  nrow(result) // nrow(lattice)
+  @fact ncells --> 4
+  @fact names(result) --> ∪(names(result), (:site_id, :cell_id))
+  @fact 1 .≤ result[:site_id] .≤ nrow(lattice) --> all
+  actual = convert(Array, result[:position])
+  expected = convert(Array, lattice[result[:site_id], :position])
+  @fact is_periodic(actual, expected, lattice.cell) --> all
+  @fact length(unique(result[:cell_id])) --> ncells
+  for i in unique(result[:cell_id])
+    @fact countnz(result[:cell_id] .== i) --> nrow(lattice)
+  end
+  @fact length(unique(result[:site_id])) --> nrow(lattice)
+  for i in unique(result[:site_id])
+    @fact countnz(result[:site_id] .== i) --> ncells
+  end
+  @fact length(unique(result[:position])) --> nrow(result)
+end
