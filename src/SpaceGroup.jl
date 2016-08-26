@@ -1,6 +1,7 @@
 module SpaceGroup
 
-const default_tolerance = 1e-8
+using Crystals.Constants: default_tolerance
+using Crystals.Structure: Crystal
 
 """
 gvectors with equivalent norms
@@ -76,6 +77,45 @@ function cell_invariants(cell::Matrix; tolerance::Real=default_tolerance)
   result
 end
 
+""" Looks for internal translations """
+function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance):
+  any(isna(crystal[:position])) && error("Some positions are not available")
+  any(isna(crystal[:species])) && error("Some species are not available")
+
+  cell = gruber(structure.cell)
+
+  # find specie with minimum number of atoms
+  species_count = by(crystal[[:species]], :species, d -> nrow(d))
+  front = species_count[findmin(species_count[:x1])[2], :]
+
+  positions = convert(
+    Array, crystal[crystal[:species] == front[:species], :position])
+  
+
+  translations = []
+  for site in eachrow(crystal)
+    site[:species] ≠ front[:species] && continue
+
+    translation = into_voronoi(site.pos - center, cell)
+    all(abs(translation) .< tolerance) && continue
+
+    is_mapping = true
+    for mapping in eachrow(structure)
+      pos = into_cell(mapping[:position] + translation, cell)
+      found = false
+      for mappee in eachrow(structure)
+        found = mapping[:specie] == mappee[:specie] &&
+                all(abs(mappee[:position] - pos) .< tolerance)
+        found && break
+      end
+      (!found) && (is_mapping = false; break)
+    end
+    is_mapping && push!(translations, into_voronoi(translation, cell))
+  end
+
+  translations
+end
+
 """
 Computes space-group operations
 """
@@ -132,4 +172,5 @@ function space_group(cell::Matrix, positions::Matrix, types::Vector;
 #               # only one trial translation is possible, so break out of loop early
 #               break
 #   return result
+end
 end

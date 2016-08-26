@@ -1,4 +1,8 @@
-using DataFrames: AbstractDataFrame, isna
+module Structure
+
+using FixedSizeArrays: FixedVectorNoTuple
+using DataFrames: AbstractDataFrame, isna, DataArray, DataFrame
+import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact, nrow
 
 for s in 2:6
   local name = Symbol("Position$(s)D")
@@ -279,3 +283,6 @@ function ourshowcompact(io::IO, pos::Position)
 end
 
 nrow(crystal::Crystal) = nrow(crystal.atoms)
+
+export Position, PositionArray, PositionDataArray, Crystal
+end

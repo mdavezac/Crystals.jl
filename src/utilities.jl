@@ -1,3 +1,5 @@
+module Utilities
+using Crystals.Constants: default_tolerance
 """
 Hart-Forcade transform
 
@@ -87,4 +89,9 @@ function supercell(lattice::Crystal, supercell; site_id=true, cell_id=true)
     push!(all_atoms, deepcopy(atoms))
   end
   vcat(Crystal(supercell, lattice.scale), all_atoms...)
+end
+
+
+export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
+    supercell
 end

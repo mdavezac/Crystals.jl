@@ -1,7 +1,7 @@
 module Gruber
 export gruber
 
-const default_tolerance = 1e-8
+using Crystals.Constants: default_tolerance
 const max_no_change = 2
 
 function no_opt_change_test(new, last)

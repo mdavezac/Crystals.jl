@@ -21,27 +21,33 @@ properties:
     crystal = Crystal(eye(2),
                       position=transpose([1 1; 2 3; 4 5]),
                       species=["Al", "O", "O"],
-                      label=[:+, :-, :-]
+                      label=[:+, :-, :-])
 """
 module Crystals
 
 using DataFrames: DataFrame, DataArray, ColumnIndex, index, NA
-import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact, nrow
-using FixedSizeArrays: FixedVectorNoTuple
+
+module Constants
+  const default_tolerance = 1e-8
+end
 
 include("Structure.jl")
+using .Structure
 # include("SpaceGroup.jl")
 include("Gruber.jl")
-import .Gruber: gruber
-const default_tolerance = Gruber.default_tolerance
+using .Gruber
 
 include("SNF.jl")
-import .SNF: smith_normal_form
+using .SNF
 
 include("utilities.jl")
+using .utilities
 
-export Crystal, Position, PositionArray, PositionDataArray, deleterows!,
-      nullable!, Position, gruber, smith_normal_form, into_cell, into_voronoi,
-      is_periodic, origin_centered, supercell
+
+export Crystal, Position, PositionArray, PositionDataArray, gruber,
+    smith_normal_form
+
+export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
+    supercell
 
 end # module
