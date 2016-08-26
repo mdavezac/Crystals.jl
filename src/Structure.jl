@@ -1,8 +1,10 @@
 module Structure
+export Position, PositionArray, PositionDataArray, Crystal
 
 using FixedSizeArrays: FixedVectorNoTuple
-using DataFrames: AbstractDataFrame, isna, DataArray, DataFrame
+using DataFrames: AbstractDataFrame, isna, DataArray, DataFrame, NA, index
 import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact, nrow
+
 
 for s in 2:6
   local name = Symbol("Position$(s)D")
@@ -284,5 +286,4 @@ end
 
 nrow(crystal::Crystal) = nrow(crystal.atoms)
 
-export Position, PositionArray, PositionDataArray, Crystal
 end

@@ -1,5 +1,10 @@
 module Utilities
+export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi, supercell
+
 using Crystals.Constants: default_tolerance
+using Crystals.Structure: Position, Crystal
+using Crystals.SNF: smith_normal_form
+using DataFrames: nrow
 """
 Hart-Forcade transform
 
@@ -90,8 +95,4 @@ function supercell(lattice::Crystal, supercell; site_id=true, cell_id=true)
   end
   vcat(Crystal(supercell, lattice.scale), all_atoms...)
 end
-
-
-export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
-    supercell
 end

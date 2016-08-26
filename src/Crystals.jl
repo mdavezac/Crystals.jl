@@ -24,8 +24,11 @@ properties:
                       label=[:+, :-, :-])
 """
 module Crystals
-
-using DataFrames: DataFrame, DataArray, ColumnIndex, index, NA
+export Position, PositionArray, PositionDataArray, Crystal
+export gruber
+export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi, supercell
+export smith_normal_form
+export cell_invariants, inner_translations
 
 module Constants
   const default_tolerance = 1e-8
@@ -33,7 +36,7 @@ end
 
 include("Structure.jl")
 using .Structure
-# include("SpaceGroup.jl")
+
 include("Gruber.jl")
 using .Gruber
 
@@ -41,13 +44,8 @@ include("SNF.jl")
 using .SNF
 
 include("utilities.jl")
-using .utilities
+using .Utilities
 
-
-export Crystal, Position, PositionArray, PositionDataArray, gruber,
-    smith_normal_form
-
-export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
-    supercell
-
+include("SpaceGroup.jl")
+using .SpaceGroup
 end # module

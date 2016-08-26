@@ -1,4 +1,5 @@
 module SpaceGroup
+export cell_invariants, inner_translations
 
 using Crystals.Constants: default_tolerance
 using Crystals.Structure: Crystal
@@ -90,7 +91,6 @@ function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance)
 
   positions = convert(
     Array, crystal[crystal[:species] == front[:species], :position])
-  
 
   translations = []
   for site in eachrow(crystal)
