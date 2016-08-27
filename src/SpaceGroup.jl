@@ -1,8 +1,9 @@
 module SpaceGroup
-export cell_invariants, inner_translations
+export point_group_operations, inner_translations
 
 using Crystals.Constants: default_tolerance
 using Crystals.Structure: Crystal
+using AffineTransforms: AffineTransform
 
 """
 gvectors with equivalent norms
@@ -20,18 +21,16 @@ function potential_equivalents(cell::Matrix; tolerance::Real=default_tolerance)
   lengths = reducedim(+, cell .* cell, 1)
   max_norm = mapreduce(i -> norm(cell[:, i]), max, 0, 1:size(cell, 2))
 
-  const n0 = Int(ceil(max_norm * norm(cross(a1, a2)) / volume))
-  const n1 = Int(ceil(max_norm * norm(cross(a2, a0)) / volume))
-  const n2 = Int(ceil(max_norm * norm(cross(a0, a1)) / volume))
+  const n0 = ceil(Integer, max_norm * norm(cross(a1, a2)) / volume)
+  const n1 = ceil(Integer, max_norm * norm(cross(a2, a0)) / volume)
+  const n2 = ceil(Integer, max_norm * norm(cross(a0, a1)) / volume)
 
   gvectors = Any[Array{eltype(cell), 1}[] for u in 1:length(lengths)]
   for i in -n0:n0, j in -n1:n1, k in -n2:n2
     g = cell * eltype(cell)[i, j, k]
     glength = sum(g .* g)
     for (length, result) in zip(lengths, gvectors)
-      if abs(length - glength) < tolerance
-        push!(result, g)
-      end
+      abs(length - glength) < tolerance && push!(result, g)
     end
   end
 
@@ -48,13 +47,12 @@ Implementation taken from ENUM_.
 
 .. _ENUM: http://enum.sourceforge.net/
 """
-function cell_invariants(cell::Matrix; tolerance::Real=default_tolerance)
+function point_group_operations(cell::Matrix; tolerance::Real=default_tolerance)
   @assert size(cell, 1) == size(cell, 2)
   const ndims = size(cell, 1)
 
-  result = Matrix{eltype(cell)}[]
-
   avecs, bvecs, cvecs = potential_equivalents(cell, tolerance=tolerance)
+  result = Matrix{eltype(cell)}[eye(eltype(cell), size(cell, 1))]
 
   const identity = eye(size(cell, 1))
   const invcell = inv(cell)
@@ -73,9 +71,9 @@ function cell_invariants(cell::Matrix; tolerance::Real=default_tolerance)
 
     # check rotation not in list 
     index = findfirst(x -> all(abs(x - rotation) .< tolerance), result)
-    index != 0 || push!(result, rotation)
+    index ≠ 0 || push!(result, rotation)
   end
-  result
+  map(result) do x; AffineTransform(x, zeros(size(cell, 1))) end
 end
 
 """ Looks for internal translations """

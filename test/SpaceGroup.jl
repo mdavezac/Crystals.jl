@@ -11,3 +11,37 @@ facts("Potential equivalents regression") do
   @fact size(cvecs) --> (3, 8)
   @fact mapreducedim(x -> x * x, +, cvecs, 1) .== norms[3] --> all
 end
+
+facts("Point group operations") do
+  parameters = [
+    ([0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0], 48),
+    ([-0.5 0.5 0.5; 0.5 -0.5 0.5; 0.5 0.5 -0.5], 48),
+    ([-0.6 0.5 0.5; 0.6 -0.5 0.5; 0.6 0.5 -0.5], 4),
+    ([-0.7 0.7 0.7; 0.6 -0.5 0.5; 0.6 0.5 -0.5], 8),
+    ([-0.765 0.7 0.7; 0.665 -0.5 0.5; 0.6 0.5 -0.5], 2)
+  ]
+
+  for (cell, numops) in parameters
+    ops = point_group_operations(cell)
+    @fact length(ops) --> numops
+    for op in ops
+      @fact size(op.scalefwd) --> (3, 3)
+      @fact op.offset --> roughly([0, 0, 0])
+      transformation = inv(cell) * op.scalefwd * cell
+      @fact transformation --> all_integers
+      @fact abs(det(transformation)) --> roughly(1)
+
+      if numops != 48
+        allops = point_group_operations([0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0])
+        failed = 0
+        for op in allops
+           transformation = inv(cell) * op.scalefwd * cell
+           all_integers(transformation) || continue
+           abs(abs(det(transformation)) - 1) < 1e-8 || continue
+           failed += 1
+        end
+        @fact failed --> numops
+      end
+    end
+  end
+end
