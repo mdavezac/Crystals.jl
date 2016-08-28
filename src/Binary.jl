@@ -3,7 +3,7 @@ rock_salt(T::Type=Float64; scale=1) = Crystal(
     eye(T, 3),
     scale,
     tposition=T[0 0 0; 0.5 0.5 0.5],
-    specie=['A', 'B']
+    species=['A', 'B']
 )
 
 " Zinc-blende lattice "
@@ -11,7 +11,7 @@ zinc_blende(T::Type=Float64; scale=1) = Crystal(
     T[0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0],
     scale,
     tposition=T[0 0 0; 0.25 0.25 0.25],
-    specie=['A', 'B']
+    species=['A', 'B']
 )
 
 " Diamond lattice "
@@ -19,7 +19,7 @@ diamond(T::Type=Float64; scale=1) = Crystal(
     T[0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0],
     scale,
     tposition=T[0 0 0; 0.25 0.25 0.25],
-    specie=['A', 'A']
+    species=['A', 'A']
 )
 
 " Wurtzite lattice "
@@ -30,5 +30,5 @@ wurtzite(T::Type=Float64; scale=1) = Crystal(
                 0.5 -sqrt(3)/6 0.5;
                 0.5  sqrt(3)/6 0.25;
                 0.5 -sqrt(3)/6 0.75],
-    specie=['A', 'A', 'B', 'B']
+    species=['A', 'A', 'B', 'B']
 )
