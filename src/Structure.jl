@@ -87,8 +87,13 @@ Base.convert{T <: Real}(::Type{PositionDataArray{T}}, x::Matrix) =
 
 Base.convert(::Type{PositionArray}, x::Vector) =
   convert(PositionArray, transpose(transpose(x)))
+Base.convert{T <: Real}(::Type{PositionArray{T}}, x::Vector) =
+  convert(PositionArray{T}, transpose(transpose(x)))
 Base.convert(::Type{PositionDataArray}, x::Vector) =
   convert(PositionDataArray, transpose(transpose(x)))
+Base.convert{T <: Real}(::Type{PositionDataArray{T}}, x::Vector) =
+  convert(PositionDataArray{T}, transpose(transpose(x)))
+
 
 abstract AbstractCrystal
 
@@ -133,9 +138,9 @@ function Crystal(T::Type, cell::Matrix, scale=1::Real; kwargs...)
       continue
     end
     if kwargs[i][1] == :position
-      position = convert(PositionDataArray, kwargs[i][2])
+      position = convert(PositionDataArray{T}, kwargs[i][2])
     else
-      position = convert(PositionDataArray, transpose(kwargs[i][2]))
+      position = convert(PositionDataArray{T}, transpose(kwargs[i][2]))
     end
     size(cell, 1) == length(eltype(position)) ||
       error("Dimensionality of cell and positions do not match")
