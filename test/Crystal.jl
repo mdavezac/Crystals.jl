@@ -5,6 +5,9 @@ facts("Convertion vector <--> position") do
    @fact [position...] --> array
    @fact typeof(convert(Array, position)) --> typeof(array)
    @fact convert(Array, position) --> array
+
+   position = convert(Position{Int8}, array)
+   @fact eltype(position) --> Int8
 end
 
 facts("Convertions matrix <--> array of positions") do
@@ -33,7 +36,7 @@ facts("Convertions matrix <--> array of positions") do
   end
 
   context("Explicit element type conversion") do
-    positions = convert(Vector{Crystals.Structure.Position2D{Int8}}, [1 2; 3 4])
+    positions = convert(PositionArray{Int8}, [1 2; 3 4])
     @fact eltype(eltype(positions)) --> Int8
   end
 end

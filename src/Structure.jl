@@ -5,14 +5,18 @@ using FixedSizeArrays: FixedVectorNoTuple
 using DataFrames: AbstractDataFrame, isna, DataArray, DataFrame, NA, index
 import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact, nrow
 
+" All acceptable types for positions "
+abstract Position{T <:Real, N} <: FixedVectorNoTuple{N, T}
+const MAX_POSITION_SIZE = 6
+const MIN_POSITION_SIZE = 2
 
-for s in 2:6
+for s in MIN_POSITION_SIZE:MAX_POSITION_SIZE
   local name = Symbol("Position$(s)D")
   local docstring = "Position for $s-dimensional crystals"
   local code = begin
     u = quote
       $docstring
-      immutable $name{T <:Real} <: FixedVectorNoTuple{$s, T}
+      immutable $name{T <:Real} <: Position{T, $s}
       end
     end
     for (i, symb) in enumerate([:x, :y, :z, :u, :v, :w][1:s])
@@ -23,31 +27,16 @@ for s in 2:6
   eval(code)
 end
 
-" All acceptable types for positions "
-typealias Position{T <: Real} Union{
-  Position2D{T}, Position3D{T},
-  Position4D{T}, Position5D{T}, Position6D{T}
-}
-" Alias to vectors of positions "
-typealias PositionArray{T <: Real} Union{
-  Vector{Position2D{T}}, Vector{Position3D{T}},
-  Vector{Position4D{T}}, Vector{Position5D{T}}, Vector{Position6D{T}}
-}
-" Alias to data array of positions "
-typealias PositionDataArray{T <: Real} Union{
-  DataArray{Position2D{T}, 1}, DataArray{Position3D{T}, 1},
-  DataArray{Position4D{T}, 1}, DataArray{Position5D{T}, 1},
-  DataArray{Position6D{T}, 1}
-}
+" All derived position types "
+const PositionTypes = ([
+    eval(parse("Position$(n)D"))
+    for n in MIN_POSITION_SIZE:MAX_POSITION_SIZE
+]...)
 
-const MAX_POSITION_SIZE = maximum([length(u) for u in Position{Real}.types])
-const MIN_POSITION_SIZE = minimum([length(u) for u in Position{Real}.types])
-function positions_type(x::Vector)
-  MIN_POSITION_SIZE ≤ length(x) ≤ MAX_POSITION_SIZE ||
-    error("Incorrect column vector size")
-  position_index = findfirst(u -> length(u) == length(x), Position{eltype(x)}.types)
-  Position{eltype(x)}.types[position_index]
-end
+" Alias to vectors of positions "
+typealias PositionArray{T <: Real, N}  Vector{Position{T, N}}
+" Alias to data array of positions "
+typealias PositionDataArray{T <: Real, N} DataArray{Position{T, N}, 1}
 
 # Add conversion rules from arrays
 Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix) =
@@ -56,22 +45,25 @@ Base.convert{T <: Position}(::Type{Array}, x::Vector{T}) =
     eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
 function Base.convert{T <: Position}(::Type{Array}, x::DataArray{T, 1})
   any(isna(x)) && error("Cannot convert DataArray with NA's to desired type")
-  eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
+    eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
 end
 function Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix)
   length(T) == size(x, 1) || error("Columns cannot be converted to one of $T")
-  T[T(x[:, u]) for u in 1:size(x, 2)]
+  T[convert(T, x[:, u]) for u in 1:size(x, 2)]
 end
-function Base.convert(::Type{Position}, x::Vector)
+function Base.convert{T <: Real}(::Type{Position}, x::Vector{T})
   if eltype(x) <: Real
     const INNER = eltype(x)
   else
     const reducer = (x, y) -> promote_type(x, typeof(y))
     const INNER = reduce(reducer, typeof(x[1]), x[2:end])
   end
-  k = findfirst(X -> length(X) == size(x, 1), Position{INNER}.types)
-  k == 0 && error("Columns cannot be converted to one of Crystal.Position")
-  convert(Position{INNER}.types[k], x)
+  convert(Position{INNER}, x)
+end
+function Base.convert{T <: Real}(::Type{Position{T}}, x::Vector)
+  k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
+  k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+  convert(PositionTypes[k]{T}, x)
 end
 function Base.convert(::Type{PositionArray}, x::Matrix)
   if eltype(x) <: Real
@@ -80,26 +72,18 @@ function Base.convert(::Type{PositionArray}, x::Matrix)
     const reducer = (x, y) -> promote_type(x, typeof(y))
     const INNER = reduce(reducer, typeof(x[1]), x[2:end])
   end
-  k = findfirst(X -> length(eltype(X)) == size(x, 1), PositionArray{INNER}.types)
-  k == 0 && error("Columns cannot be converted to one of Crystal.Position")
-  convert(PositionArray{INNER}.types[k], x)
+  convert(PositionArray{INNER}, x)
 end
-function Base.convert(::Type{PositionDataArray}, x::Matrix)
-  if eltype(x) <: Real
-    const INNER = eltype(x)
-  else
-    const reducer = (x, y) -> promote_type(x, typeof(y))
-    const INNER = reduce(reducer, typeof(x[1]), x[2:end])
-  end
+function Base.convert{T <: Real}(::Type{PositionArray{T}}, x::Matrix)
+  k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
+  k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+  convert(Vector{PositionTypes[k]{T}}, x)
+end
 
-  k = findfirst(X -> length(eltype(X)) == size(x, 1), PositionArray{INNER}.types)
-  k == 0 && error("Columns cannot be converted to one of Crystal.PositionArray")
-  const OUTER = PositionArray{INNER}.types[k]
-  k = findfirst(X -> length(eltype(X)) == size(x, 1), PositionDataArray{INNER}.types)
-  k == 0 && error("Columns cannot be converted to one of Crystal.PositionDataArray")
-  const DATAARRAY = PositionDataArray{INNER}.types[k]
-  DATAARRAY(convert(OUTER, x))
-end
+Base.convert(::Type{PositionDataArray}, x::Matrix) =
+  DataArray(convert(PositionArray, x))
+Base.convert{T <: Real}(::Type{PositionDataArray{T}}, x::Matrix) =
+  DataArray(convert(PositionArray{T}, x))
 
 Base.convert(::Type{PositionArray}, x::Vector) =
   convert(PositionArray, transpose(transpose(x)))
@@ -130,7 +114,7 @@ type Crystal{T} <: AbstractCrystal
     :position ∈ names(atoms) || nrow(atoms) == 0 ||
       error("Input Dataframe has atoms without positions")
     if nrow(atoms) == 0
-      atoms[:position] = Vector{positions_type(cell[:, 1])}()
+      atoms[:position] = Vector{Position{eltype(cell), size(cell, 1)}}()
     else
       eltype(atoms[:position]) <: Position ||
         error("Positions do not have acceptable type")
@@ -269,7 +253,7 @@ function Base.push!(crystal::Crystal, position::Position; kwargs...)
 end
 
 function Base.push!{T <: Real}(crystal::Crystal, position::Vector{T}; kwargs...)
-  pos = positions_type(position)(position)
+  pos = convert(Position{T}, position)
   Base.push!(crystal, pos; kwargs...)
 end
 
