@@ -29,6 +29,7 @@ export gruber
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi, supercell
 export smith_normal_form
 export point_group_operations, inner_translations
+export Lattices
 
 module Constants
   const default_tolerance = 1e-8
@@ -48,4 +49,10 @@ using .Utilities
 
 include("SpaceGroup.jl")
 using .SpaceGroup
+
+module Lattices
+  using Crystals.Crystal
+  include("Bravais.jl")
+  include("Binary.jl")
+end
 end # module
