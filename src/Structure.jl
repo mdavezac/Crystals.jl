@@ -2,8 +2,10 @@ module Structure
 export Position, PositionArray, PositionDataArray, Crystal
 
 using FixedSizeArrays: FixedVectorNoTuple
-using DataFrames: AbstractDataFrame, isna, DataArray, DataFrame, NA, index
-import DataFrames: deleterows!, hcat!, nullable!, pool!, ourshowcompact, nrow
+using DataFrames: AbstractDataFrame, isna, DataArray, DataFrame, NA, index,
+        nrow, hcat!, nullable!, pool!, eachrow, eachcol, deleterows!
+import DataFrames
+import Base
 
 " All acceptable types for positions "
 abstract Position{T <:Real, N} <: FixedVectorNoTuple{N, T}
@@ -211,10 +213,10 @@ Base.deepcopy(crystal::Crystal) =
     deepcopy(crystal.cell), crystal.scale, deepcopy(crystal.atoms))
 
 Base.delete!(crystal::Crystal, cols::Any) =
-  (delete!(crystal.atoms, cols); crystal)
-deleterows!(crystal::Crystal, cols::Any) =
-  (deleterows!(crystal.atoms, cols); crystal)
-hcat!(crystal::Crystal, x...) = (hcat!(crystal.atoms, x...); crystal)
+    (delete!(crystal.atoms, cols); crystal)
+DataFrames.deleterows!(crystal::Crystal, cols::Any) =
+    (deleterows!(crystal.atoms, cols); crystal)
+DataFrames.hcat!(crystal::Crystal, x...) = (hcat!(crystal.atoms, x...); crystal)
 Base.hcat(crystal::Crystal, x...) = hcat!(copy(crystal), x...)
 Base.vcat(crystal::Crystal) = crystal
 """
@@ -223,14 +225,15 @@ Base.vcat(crystal::Crystal) = crystal
 Concatenates atoms into crystal
 """
 function Base.vcat(crys::Crystal, dfs::AbstractDataFrame...)
-  result = Crystal(crys.cell, crys.scale)
-  result.atoms = vcat(crys.atoms, dfs...)
-  result
+    result = Crystal(crys.cell, crys.scale)
+    result.atoms = vcat(crys.atoms, dfs...)
+    result
 end
-nullable!(crystal::Crystal, x...) = (nullable!(crystal.atoms, x...); crystal)
-pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
+DataFrames.nullable!(crystal::Crystal, x...) =
+    (nullable!(crystal.atoms, x...); crystal)
+DataFrames.pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
 Base.append!(crystal::Crystal, atoms::DataFrame) =
-  (append!(crystal.atoms, atoms); crystal)
+    (append!(crystal.atoms, atoms); crystal)
 Base.push!(crystal::Crystal, x) = push!(crystal.atoms, x)
 
 function Base.push!(crystal::Crystal, position::Position; kwargs...)
@@ -275,11 +278,13 @@ function Base.showcompact(io::IO, pos::Position)
   print(io, result[findfirst(result, '('):end])
 end
 
-function ourshowcompact(io::IO, pos::Position)
+function DataFrames.ourshowcompact(io::IO, pos::Position)
   result = string(pos)
   print(io, result[findfirst(result, '(') + 1:end - 1])
 end
 
-nrow(crystal::Crystal) = nrow(crystal.atoms)
+DataFrames.nrow(crystal::Crystal) = nrow(crystal.atoms)
+DataFrames.eachrow(crystal::Crystal) = eachrow(crystal.atoms)
+DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
 
 end
