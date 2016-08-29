@@ -2,7 +2,7 @@ module SpaceGroup
 export point_group_operations, inner_translations
 
 using Crystals.Constants: default_tolerance
-using Crystals.Structure: Crystal
+using Crystals.Structure: Crystal, volume
 using Crystals.Gruber: gruber
 using Crystals.Utilities: into_voronoi, is_periodic, into_cell
 using AffineTransforms: AffineTransform
@@ -16,7 +16,7 @@ lengths as the column vectors defining the cell. these new vectors are
 potentially symmetrically equivalent.
 """
 function potential_equivalents(cell::Matrix; tolerance::Real=default_tolerance)
-    const volume = abs(det(cell))
+    const V = volume(cell)
     const a0 = cell[:, 1]
     const a1 = cell[:, 2]
     const a2 = cell[:, 3]
@@ -24,9 +24,9 @@ function potential_equivalents(cell::Matrix; tolerance::Real=default_tolerance)
     lengths = reducedim(+, cell .* cell, 1)
     max_norm = mapreduce(i -> norm(cell[:, i]), max, 0, 1:size(cell, 2))
 
-    const n0 = ceil(Integer, max_norm * norm(cross(a1, a2)) / volume)
-    const n1 = ceil(Integer, max_norm * norm(cross(a2, a0)) / volume)
-    const n2 = ceil(Integer, max_norm * norm(cross(a0, a1)) / volume)
+    const n0 = ceil(Integer, max_norm * norm(cross(a1, a2)) / V)
+    const n1 = ceil(Integer, max_norm * norm(cross(a2, a0)) / V)
+    const n2 = ceil(Integer, max_norm * norm(cross(a0, a1)) / V)
 
     gvectors = Any[Array{eltype(cell), 1}[] for u in 1:length(lengths)]
     for i in -n0:n0, j in -n1:n1, k in -n2:n2
@@ -115,6 +115,78 @@ function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance)
         is_mapping && push!(translations, into_voronoi(translation, cell))
     end
     translations
+end
+
+
+"""
+    primitive(crystal::Crystal; tolerance=default_tolerance)
+
+Computes the primitive cell of the input crystal.
+If the crystal is primitive, it is returned as is, otherwise a new crystal is
+returned.
+"""
+function primitive(crystal::Crystal; tolerance=default_tolerance)
+    nrow(crystal) == 0 && return crystal
+
+    cell = gruber(crystal.cell)
+    trans = inner_translations(crystal, tolerance=tolerance)
+    length(trans) == 0 && return crystal
+
+    # adds original translations.
+    push!(trans, cell[:, 0])
+    push!(trans, cell[:, 1])
+    push!(trans, cell[:, 2])
+
+    # Looks for cell with smallest volume 
+    new_cell = deepcopy(crystal.cell)
+    V = volume(new_cell)
+    for (i, first) in enumerate(trans), (j, second) in enumerate(trans)
+        i == j && continue
+        for (k, third) in enumerate(trans):
+            (i == k ||  j == k) && continue
+            trial = hcat(first, second, third)
+            abs(det(trial) < 1e-12) && continue
+            (abs(det(trial)) > V - 3.0 * tolerance) && continue
+
+            det(trial) < 0e0 && (trial[:, 2], trial[:, 1] = second, third)
+            det(trial) < 0e0 && error("Negative volume")
+
+            int_cell = inv(trial) * cell
+            all(abs(int_cell - round(Integer, int_cell) .< 1e-8)) || continue
+
+            new_cell = trial
+            V = volume(trial)
+        end
+    end
+
+
+    # Found the new cell with smallest volume (e.g. primivite)
+    abs(volume(crystal) - V) < tolerance ||
+        error("Found translation but no primitive cell.")
+
+    # now creates new lattice.
+    result = Crystal{eltype(crystal.cell)}(gruber(new_cell), crystal.scale)
+
+    for site in eachrow(crystal)
+        position = into_cell(site[:position], crystal.cell)
+        k = findfirst(eachrow(result)) do atom
+            site[:species] == atom[:species] &&
+            all(abs(position - atom[:position]) .< tolerance)
+        end
+        if k == 0
+            push!(result, deepcopy(site)
+            result[end, :position] = position
+        end
+    end
+
+    nrow(crystal) % nrow(result) ≠ 0 &&
+        error("Nb of atoms in output not multiple of input.")
+
+    abs(
+        nrow(crystal) * abs(det(crystal.cell)) - nrow(result) *
+        abs(det(crystal.cell))
+    ) > tolerance || error("Size and volumes do not match.")
+    result
 end
 
 """

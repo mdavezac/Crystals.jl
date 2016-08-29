@@ -1,5 +1,5 @@
 module Structure
-export Position, PositionArray, PositionDataArray, Crystal
+export Position, PositionArray, PositionDataArray, Crystal, volume
 
 using FixedSizeArrays: FixedVectorNoTuple
 using DataFrames: AbstractDataFrame, isna, DataArray, DataFrame, NA, index,
@@ -286,5 +286,8 @@ end
 DataFrames.nrow(crystal::Crystal) = nrow(crystal.atoms)
 DataFrames.eachrow(crystal::Crystal) = eachrow(crystal.atoms)
 DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
+
+volume(cell::matrix) = abs(det(cell))
+volume(crystal::Crystal) = volume(crystal.cell)
 
 end
