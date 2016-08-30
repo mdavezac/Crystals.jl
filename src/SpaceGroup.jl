@@ -121,9 +121,9 @@ end
 """
     primitive(crystal::Crystal; tolerance=default_tolerance)
 
-Computes the primitive cell of the input crystal.
-If the crystal is primitive, it is returned as is, otherwise a new crystal is
-returned.
+    Computes the primitive cell of the input crystal.
+    If the crystal is primitive, it is returned as is, otherwise a new crystal is
+    returned.
 """
 function primitive(crystal::Crystal; tolerance=default_tolerance)
     nrow(crystal) == 0 && return crystal
@@ -142,13 +142,15 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
     V = volume(new_cell)
     for (i, first) in enumerate(trans), (j, second) in enumerate(trans)
         i == j && continue
-        for (k, third) in enumerate(trans):
+        for (k, third) in enumerate(trans)
             (i == k ||  j == k) && continue
             trial = hcat(first, second, third)
             abs(det(trial) < 1e-12) && continue
             (abs(det(trial)) > V - 3.0 * tolerance) && continue
 
-            det(trial) < 0e0 && (trial[:, 2], trial[:, 1] = second, third)
+            if det(trial) < 0e0
+                trial[:, 2], trial[:, 1] = second, third
+            end
             det(trial) < 0e0 && error("Negative volume")
 
             int_cell = inv(trial) * cell
@@ -158,7 +160,6 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
             V = volume(trial)
         end
     end
-
 
     # Found the new cell with smallest volume (e.g. primivite)
     abs(volume(crystal) - V) < tolerance ||
@@ -174,7 +175,7 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
             all(abs(position - atom[:position]) .< tolerance)
         end
         if k == 0
-            push!(result, deepcopy(site)
+            push!(result, deepcopy(site))
             result[end, :position] = position
         end
     end

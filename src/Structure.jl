@@ -287,7 +287,7 @@ DataFrames.nrow(crystal::Crystal) = nrow(crystal.atoms)
 DataFrames.eachrow(crystal::Crystal) = eachrow(crystal.atoms)
 DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
 
-volume(cell::matrix) = abs(det(cell))
+volume(cell::Matrix) = abs(det(cell))
 volume(crystal::Crystal) = volume(crystal.cell)
 
 end
