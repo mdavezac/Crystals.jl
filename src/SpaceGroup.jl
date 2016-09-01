@@ -1,12 +1,12 @@
 module SpaceGroup
-export point_group_operations, inner_translations
+export point_group_operations, inner_translations, is_primitive, primitive
 
 using Crystals.Constants: default_tolerance
 using Crystals.Structure: Crystal, volume
 using Crystals.Gruber: gruber
 using Crystals.Utilities: into_voronoi, is_periodic, into_cell
 using AffineTransforms: AffineTransform
-using DataFrames: isna, by, nrow, eachrow
+using DataFrames: isna, by, nrow, eachrow, DataFrame
 
 """
 gvectors with equivalent norms
@@ -117,6 +117,9 @@ function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance)
     translations
 end
 
+""" True if the crystal structure cannot be reduced """
+is_primitive(crystal::Crystal; tolerance=default_tolerance) =
+    length(inner_translations(crystal; tolerance=tolerance)) == 0
 
 """
     primitive(crystal::Crystal; tolerance=default_tolerance)
@@ -133,9 +136,9 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
     length(trans) == 0 && return crystal
 
     # adds original translations.
-    push!(trans, cell[:, 0])
     push!(trans, cell[:, 1])
     push!(trans, cell[:, 2])
+    push!(trans, cell[:, 3])
 
     # Looks for cell with smallest volume 
     new_cell = deepcopy(crystal.cell)
@@ -162,20 +165,22 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
     end
 
     # Found the new cell with smallest volume (e.g. primivite)
-    abs(volume(crystal) - V) < tolerance ||
+    V < volume(crystal) - tolerance ||
         error("Found translation but no primitive cell.")
 
     # now creates new lattice.
-    result = Crystal{eltype(crystal.cell)}(gruber(new_cell), crystal.scale)
+    result = Crystal(eltype(crystal.cell), gruber(new_cell), crystal.scale)
+    columns = filter(names(crystal.atoms)) do x; x ∉ (:site_id, :cell_id) end
+    result.atoms = crystal[1:0, columns]
 
     for site in eachrow(crystal)
-        position = into_cell(site[:position], crystal.cell)
+        position = into_cell(site[:position], result.cell)
         k = findfirst(eachrow(result)) do atom
             site[:species] == atom[:species] &&
             all(abs(position - atom[:position]) .< tolerance)
         end
         if k == 0
-            push!(result, deepcopy(site))
+            push!(result, site; no_new_properties=true)
             result[end, :position] = position
         end
     end
@@ -184,9 +189,8 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
         error("Nb of atoms in output not multiple of input.")
 
     abs(
-        nrow(crystal) * abs(det(crystal.cell)) - nrow(result) *
-        abs(det(crystal.cell))
-    ) > tolerance || error("Size and volumes do not match.")
+        nrow(crystal) * volume(result) - nrow(result) * volume(crystal)
+    ) < tolerance || error("Size and volumes do not match.")
     result
 end
 

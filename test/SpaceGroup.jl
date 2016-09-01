@@ -63,3 +63,18 @@ facts("Inner translations") do
         @fact length(translations) --> round(Integer, det(cell) - 1)
     end
 end
+
+facts("Make primitive") do
+    diamond = Lattices.diamond()
+    @fact is_primitive(diamond) --> true
+    @fact primitive(diamond) --> exactly(diamond)
+
+    cell = -1
+    while det(cell) ≤ 0
+        cell = rand(-3:3, (3, 3))
+    end
+    large = supercell(diamond, diamond.cell * cell)
+    @fact is_primitive(large) --> false
+    prim = primitive(large)
+    @fact prim.cell --> roughly(gruber(diamond.cell))
+end
