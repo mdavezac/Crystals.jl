@@ -175,14 +175,14 @@ end
 
 function Base.push!(crystal::Crystal, row::DataFrameRow;
                     no_new_properties::Bool=false)
-    push!(crystal, crystal[end, :])
-    for (key, value) in row
-        if key in names(crystal)
-            crystal[end, key] = value
-        elseif no_new_columns == false
-            crystal[:, key] = value
-            crystal[1:end - 1, key] = NA
-        end
+    push!(crystal, [NA for u in 1:ncol(crystal)])
+    for (key, value) in row[intersect(names(row), names(crystal))]
+        crystal[end, key] = value
+    end
+    no_new_properties && return
+    for (key, value) in row[setdiff(names(row), names(crystal))]
+        crystal[:, key] = value
+        crystal[1:end - 1, key] = NA
     end
 end
 

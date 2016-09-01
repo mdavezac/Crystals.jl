@@ -228,4 +228,18 @@ facts("Adding atoms") do
   end
   @fact crystal[6, :special] --> :special
   @fact crystal[6, :label] --> exactly(NA)
+
+  # add a row using a dataframe
+  append!(crystal, crystal[end, :])
+  @fact size(crystal, 1) --> 7
+  @fact crystal[end, :position] --> crystal[end - 1, :position]
+
+  # add row using iterator
+  for row in eachrow(crystal)
+      push!(crystal, row)
+      break
+  end
+  @fact size(crystal, 1) --> 8
+  @fact crystal[end, :position] --> crystal[1, :position]
+
 end
