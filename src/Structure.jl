@@ -33,7 +33,7 @@ type Crystal{T} <: AbstractCrystal
         :position ∈ names(atoms) || nrow(atoms) == 0 ||
         error("Input Dataframe has atoms without positions")
         if nrow(atoms) == 0
-            atoms[:position] = Vector{Position{eltype(cell), size(cell, 1)}}()
+            atoms[:position] = Vector{typeof(Position(cell[:, 1]))}()
         else
             eltype(atoms[:position]) <: Position ||
                 error("Positions do not have acceptable type")
