@@ -69,7 +69,8 @@ function into_voronoi(pos, cell::Matrix)
 end
 
 """ Creates a supercell of an input lattice """
-function supercell(lattice::Crystal, supercell; site_id=true, cell_id=true)
+function supercell(lattice::Crystal, supercell::Matrix;
+                   site_id=true, cell_id=true)
     nrow(lattice) == 0 && error("Lattice is empty")
 
     transform, quotient = hart_forcade(lattice.cell, supercell)
@@ -94,6 +95,6 @@ function supercell(lattice::Crystal, supercell; site_id=true, cell_id=true)
         end
         push!(all_atoms, deepcopy(atoms))
     end
-    vcat(Crystal(supercell, lattice.scale), all_atoms...)
+    vcat(Crystal(eltype(lattice.cell), supercell, lattice.scale), all_atoms...)
 end
 end

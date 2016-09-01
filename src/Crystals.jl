@@ -24,17 +24,21 @@ properties:
                       label=[:+, :-, :-])
 """
 module Crystals
-export Position, PositionArray, PositionDataArray, Crystal, volume
+export Position, PositionArray, PositionDataArray
+export Crystal, volume
 export gruber
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
        supercell
 export smith_normal_form
-export point_group_operations, inner_translations
+export point_group_operations, inner_translations, is_primitive, primitive
 export Lattices
 
 module Constants
   const default_tolerance = 1e-8
 end
+
+include("Positions.jl")
+using .Positions
 
 include("Structure.jl")
 using .Structure
