@@ -1,7 +1,7 @@
 module Structure
 export Crystal, volume
 
-using DataFrames: AbstractDataFrame, DataFrame, NA, index, nrow, hcat!,
+using DataFrames: AbstractDataFrame, DataFrame, NA, index, nrow, ncol, hcat!,
         nullable!, pool!, eachrow, eachcol, deleterows!, DataFrameRow
 using Crystals.Positions: Position, PositionDataArray,
         MIN_POSITION_SIZE, MAX_POSITION_SIZE
@@ -210,6 +210,7 @@ function DataFrames.ourshowcompact(io::IO, pos::Position)
 end
 
 DataFrames.nrow(crystal::Crystal) = nrow(crystal.atoms)
+DataFrames.ncol(crystal::Crystal) = ncol(crystal.atoms)
 DataFrames.eachrow(crystal::Crystal) = eachrow(crystal.atoms)
 DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
 
