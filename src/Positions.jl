@@ -42,9 +42,9 @@ Position{T <: Real}(x::T, y::T) = Position2D{T}(x, y)
 Position{T <: Real}(x::T, y::T, z::T) = Position3D{T}(x, y, z)
 Position{T <: Real}(x::T, y::T, z::T, u::T) = Position4D{T}(x, y, z, u)
 function Position{T <: Real}(x::T...)
-    k = findfirst(X -> length(X) == size(args, 1), PositionTypes)
+    k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
     k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
-    PositionTypes[k]{T}(args...)
+    PositionTypes[k]{T}(x...)
 end
 
 function Position(x::Vector)
