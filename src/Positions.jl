@@ -38,6 +38,29 @@ typealias PositionArray{T <: Real, N}  Vector{Position{T, N}}
 " Alias to data array of positions "
 typealias PositionDataArray{T <: Real, N} DataArray{Position{T, N}, 1}
 
+Position{T <: Real}(x::T, y::T) = Position2D{T}(x, y)
+Position{T <: Real}(x::T, y::T, z::T) = Position3D{T}(x, y, z)
+Position{T <: Real}(x::T, y::T, z::T, u::T) = Position4D{T}(x, y, z, u)
+function Position{T <: Real}(x::T...)
+    k = findfirst(X -> length(X) == size(args, 1), PositionTypes)
+    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+    PositionTypes[k]{T}(args...)
+end
+
+function Position(x::Vector)
+    k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
+    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+    PositionTypes[k]{eltype(x)}(x)
+end
+
+function Position(T::Type, x::Vector)
+    k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
+    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+    PositionTypes[k]{T}(x)
+end
+
+Base.convert{T <: Real}(::Type{Position{T}}, x::Vector) = Position(T, x)
+
 # Add conversion rules from arrays
 Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix) =
     T[T(x[:, u]) for u in 1:size(x, 2)]
@@ -50,20 +73,6 @@ end
 function Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix)
     length(T) == size(x, 1) || error("Columns cannot be converted to one of $T")
     T[convert(T, x[:, u]) for u in 1:size(x, 2)]
-end
-function Base.convert{T <: Real}(::Type{Position}, x::Vector{T})
-    if eltype(x) <: Real
-        const INNER = eltype(x)
-    else
-        const reducer = (x, y) -> promote_type(x, typeof(y))
-        const INNER = reduce(reducer, typeof(x[1]), x[2:end])
-    end
-    convert(Position{INNER}, x)
-end
-function Base.convert{T <: Real}(::Type{Position{T}}, x::Vector)
-    k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
-    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
-    convert(PositionTypes[k]{T}, x)
 end
 function Base.convert(::Type{PositionArray}, x::Matrix)
     if eltype(x) <: Real

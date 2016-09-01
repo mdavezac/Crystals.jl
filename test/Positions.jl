@@ -1,11 +1,19 @@
+facts("Construction") do
+    @fact typeof(Position(1, 1)) --> is_subtype(Position2D{Int64})
+end
+
 facts("Convertion vector <--> position") do
    array = [1, 2, 3]
-   position = convert(Position, array)
+   position = Position(array)
    @fact typeof(position) --> exactly(Position3D{eltype(array)})
    @fact [position...] --> array
    @fact typeof(convert(Array, position)) --> typeof(array)
    @fact convert(Array, position) --> array
+   position = convert(Position, array)
+   @fact eltype(position) --> eltype(array)
 
+   position = Position(Int8, array)
+   @fact eltype(position) --> Int8
    position = convert(Position{Int8}, array)
    @fact eltype(position) --> Int8
 end
