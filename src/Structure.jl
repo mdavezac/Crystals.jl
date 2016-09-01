@@ -147,7 +147,7 @@ DataFrames.nullable!(crystal::Crystal, x...) =
 DataFrames.pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
 Base.append!(crystal::Crystal, atoms::DataFrame) =
     (append!(crystal.atoms, atoms); crystal)
-Base.push!(crystal::Crystal, x) = push!(crystal.atoms, x)
+Base.push!(crystal::Crystal, x::Any) = push!(crystal.atoms, x)
 
 function Base.push!(crystal::Crystal, position::Position; kwargs...)
     if length(position) ≠ size(crystal.cell, 1)
