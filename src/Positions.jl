@@ -38,6 +38,8 @@ typealias PositionArray{T <: Real, N}  Vector{Position{T, N}}
 " Alias to data array of positions "
 typealias PositionDataArray{T <: Real, N} DataArray{Position{T, N}, 1}
 
+Position(x::Position) = x
+Position(T::Type, x::Position) = eltype(x) == T ? x: Position(T[x...])
 Position{T <: Real}(x::T, y::T) = Position2D{T}(x, y)
 Position{T <: Real}(x::T, y::T, z::T) = Position3D{T}(x, y, z)
 Position{T <: Real}(x::T, y::T, z::T, u::T) = Position4D{T}(x, y, z, u)
