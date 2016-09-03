@@ -25,8 +25,11 @@ function hart_forcade(lattice::Matrix, supercell::Matrix; digits=8)
 end
 
 """
-True if the two positions are periodic
-  
+    is_periodic(a::Matrix, b::Matrix, cell::Matrix; tolerance=default_tolerance)
+    is_periodic(a::Union{Position, Vector}, b::Union{Position, Vector},
+                cell::Matrix; tolerance=default_tolerance)
+
+True if the positions are one-to-one periodic with respect to the input cell.
 Returns a boolean if the input are two positions, and an array of booleans if
 the input are arrays of positions.
 """
