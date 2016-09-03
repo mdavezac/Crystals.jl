@@ -65,16 +65,23 @@ facts("Inner translations") do
 end
 
 facts("Make primitive") do
-    diamond = Lattices.diamond()
-    @fact is_primitive(diamond) --> true
-    @fact primitive(diamond) --> exactly(diamond)
+    zinc_blende = Lattices.zinc_blende()
+    @fact is_primitive(zinc_blende) --> true
+    @fact primitive(zinc_blende) --> exactly(zinc_blende)
 
     cell = -1
     while det(cell) ≤ 0
         cell = rand(-3:3, (3, 3))
     end
-    large = supercell(diamond, diamond.cell * cell)
+    large = supercell(zinc_blende, zinc_blende.cell * cell)
     @fact is_primitive(large) --> false
     prim = primitive(large)
-    @fact prim.cell --> roughly(gruber(diamond.cell))
+    @fact niggly(prim.cell) --> roughly(niggly(zinc_blende.cell))
+    @fact nrow(prim) --> nrow(zinc_blende)
+    for i in 1:2
+        prim_pos = prim[i, :position]
+        d_pos = zinc_blende[i, :position]
+        @fact is_periodic(prim_pos, d_pos, prim.cell) --> true
+        @fact is_periodic(prim_pos, d_pos, zinc_blende.cell) --> true
+    end
 end

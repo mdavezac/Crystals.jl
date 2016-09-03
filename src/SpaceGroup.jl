@@ -175,9 +175,12 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
     result = Crystal(eltype(crystal.cell), gruber(new_cell), crystal.scale)
     columns = filter(names(crystal.atoms)) do x; x ∉ (:site_id, :cell_id) end
     result.atoms = crystal[1:0, columns]
+    Log.debug("Found gruber cell $(result.cell)")
 
+    invcell = inv(result.cell)
     for site in eachrow(crystal)
-        position = into_cell(site[:position], result.cell)
+        position = into_cell(
+            site[:position], result.cell, invcell; tolerance=tolerance)
         k = findfirst(eachrow(result)) do atom
             site[:species] == atom[:species] &&
             all(abs(position - atom[:position]) .< tolerance)
@@ -185,15 +188,22 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
         if k == 0
             push!(result, site; no_new_properties=true)
             result[end, :position] = position
+            Log.debug("Adding one atom", position=position)
         end
     end
 
-    nrow(crystal) % nrow(result) ≠ 0 &&
-        Log.error("Nb of atoms in output not multiple of input.")
+    nrow(crystal) % nrow(result) ≠ 0 && Log.error(
+        "Nb of atoms in output not multiple of input: " *
+        "$(nrow(crystal)) % $(nrow(result)) ≠ 0"
+    )
 
     abs(
         nrow(crystal) * volume(result) - nrow(result) * volume(crystal)
-    ) < tolerance || Log.error("Size and volumes do not match.")
+    ) < tolerance || Log.error(
+        "Size and volumes do not match: " *
+        "abs($(nrow(crystal)) * $(volume(result)) - $(nrow(result)) *" *
+        "$(volume(crystal))) ≥ $(tolerance)"
+    )
     result
 end
 
