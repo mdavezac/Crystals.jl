@@ -42,10 +42,33 @@ function is_periodic(a::Union{Position, Vector},
     all(abs(origin_centered(a - b, cell)) .< tolerance)
 end
 
-""" Folds periodic positions into cell """
-into_cell(pos, cell::Matrix) = cell * mod(inv(cell) * pos, 1)
+"""
+    into_cell(pos, cell::Matrix)
 
-""" Folds vector back to origin """
+Folds periodic positions into cell
+"""
+into_cell(pos, cell::Matrix; tolerance::Real=default_tolerance) =
+    into_cell(pos, cell, inv(cell), tolerance=tolerance)
+
+function into_cell(pos, cell::Matrix, invcell::Matrix;
+                   tolerance::Real=default_tolerance)
+    frac = mod(invcell * pos, 1)
+    if tolerance > 0
+        for i in 1:length(frac)
+            if abs(frac[i] - 1e0) < tolerance
+                frac[i] = 0e0
+            end
+        end
+    end
+    cell * frac
+end
+
+
+"""
+    origin_centered(pos, cell::Matrix)
+
+Folds vector back to origin
+"""
 origin_centered(pos, cell::Matrix) =
     cell * (mod(inv(cell) * pos .+ 0.5, -1) .+ 0.5)
 
@@ -74,7 +97,8 @@ function into_voronoi(pos, cell::Matrix)
 end
 
 """
-    supercell(lattice::Crystal, supercell::Matrix; site_id=true, cell_id=true)
+    supercell(lattice::Crystal, supercell::Matrix;
+              site_id::Bool=true, cell_id::Bool=true)
 
 Creates a supercell from an input lattice.
 
@@ -116,17 +140,14 @@ function supercell(lattice::Crystal, supercell::Matrix;
 end
 
 """
-```julia
-cell_parameters(a::AbstractFloat, b::AbstractFloat, c::AbstractFloat,
-                α::AbstractFloat=π/2, β::AbstractFloat=π/2,
-                γ::AbstractFloat=π/2)
-```
+    cell_parameters(a::Real, b::Real, c::Real,
+                    α::Real=π/2, β::Real=π/2, γ::Real=π/2)
+
 Computes cell from input cell parameters [a, b, c, α, β, γ].  α, β, γ are in
 radian.
 """
-function cell_parameters(a::AbstractFloat, b::AbstractFloat,
-                         c::AbstractFloat, α::AbstractFloat=π/2,
-						 β::AbstractFloat=π/2, γ::AbstractFloat=π/2)
+function cell_parameters(a::Real, b::Real, c::Real,
+                         α::Real=π/2, β::Real=π/2, γ::Real=π/2)
     cx = cos(β)
     cy = (cos(α) - cos(β)cos(γ))/sin(γ)
     [a b * cos(γ) c * cx;
@@ -138,6 +159,7 @@ end
     cell_parameters(cell::Matrix)
 
 Parameters [a, b, c, α, β, γ] of the input cell. α, β, γ are in radian.
+See also `cell_parameters°`.
 """
 function cell_parameters(cell::Matrix)
     G = transpose(cell) * cell
@@ -157,16 +179,24 @@ Parameters [a, b, c, α, β, γ] of the input cell. `α`, `β`, `γ` are in radi
 cell_parameters(crystal::Crystal) =
     cell_parameters(crystal.scale * crystal.cell)
 
-""" Cell parameters with angles in degrees """
-function cell_parameters°(x::Any)
+"""
+    cell_parameters°(x::Matrix)
+
+Cell parameters with angles in degrees. See also `cell_parameters`.
+"""
+function cell_parameters°(x::Matrix)
     p = cell_parameters(x)
     p[1], p[2], p[3], rad2deg(p[4]), rad2deg(p[5]), rad2deg(p[6])
 end
 
-""" Cell from parameters with angles in degrees """
-function cell_parameters°(a::AbstractFloat, b::AbstractFloat,
-                          c::AbstractFloat, α::AbstractFloat=90,
-                          β::AbstractFloat=90, γ::AbstractFloat=90)
+"""
+    cell_parameters°(a::Real, b::Real, c::Real,
+                     α::Real=90, β::Real=90, γ::Real=90)
+
+Cell from parameters with angles in degrees. See also `cell_parameters`.
+"""
+function cell_parameters°(a::Real, b::Real, c::Real,
+                          α::Real=90, β::Real=90, γ::Real=90)
     cell_parameters(a, b, c, deg2rad(α), deg2rad(β), deg2rad(γ))
 end
 
