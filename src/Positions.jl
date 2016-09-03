@@ -1,6 +1,7 @@
 module Positions
 export Position, PositionArray, PositionDataArray
 
+using Crystals: Log
 using FixedSizeArrays: FixedVectorNoTuple
 using DataFrames: isna, DataArray
 import Base
@@ -45,19 +46,19 @@ Position{T <: Real}(x::T, y::T, z::T) = Position3D{T}(x, y, z)
 Position{T <: Real}(x::T, y::T, z::T, u::T) = Position4D{T}(x, y, z, u)
 function Position{T <: Real}(x::T...)
     k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
-    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+    k ≠ 0 || Log.error("Cannot create position of size $(size(x, 1))")
     PositionTypes[k]{T}(x...)
 end
 
 function Position(x::Vector)
     k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
-    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+    k ≠ 0 || Log.error("Cannot create position of size $(size(x, 1))")
     PositionTypes[k]{eltype(x)}(x)
 end
 
 function Position(T::Type, x::Vector)
     k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
-    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+    k ≠ 0 || Log.error("Cannot create position of size $(size(x, 1))")
     PositionTypes[k]{T}(x)
 end
 
@@ -69,11 +70,13 @@ Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix) =
 Base.convert{T <: Position}(::Type{Array}, x::Vector{T}) =
     eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
 function Base.convert{T <: Position}(::Type{Array}, x::DataArray{T, 1})
-    any(isna(x)) && error("Cannot convert DataArray with NA's to desired type")
+    any(isna(x)) &&
+        Log.error("Cannot convert DataArray with NA's to desired type")
     eltype(eltype(x))[x[i][j] for j = 1:length(T), i = 1:length(x)]
 end
 function Base.convert{T <: Position}(::Type{Vector{T}}, x::Matrix)
-    length(T) == size(x, 1) || error("Columns cannot be converted to one of $T")
+    length(T) == size(x, 1) ||
+        Log.error("Columns cannot be converted to one of $T")
     T[convert(T, x[:, u]) for u in 1:size(x, 2)]
 end
 function Base.convert(::Type{PositionArray}, x::Matrix)
@@ -87,7 +90,8 @@ function Base.convert(::Type{PositionArray}, x::Matrix)
 end
 function Base.convert{T <: Real}(::Type{PositionArray{T}}, x::Matrix)
     k = findfirst(X -> length(X) == size(x, 1), PositionTypes)
-    k ≠ 0 || error("Cannot create position of size $(size(x, 1))")
+    k ≠ 0 ||
+        Log.error("Cannot create position of size $(size(x, 1))")
     convert(Vector{PositionTypes[k]{T}}, x)
 end
 

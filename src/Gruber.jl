@@ -2,6 +2,9 @@ module Gruber
 export gruber
 
 using Crystals.Constants: default_tolerance
+using Crystals.Utilities: cell_parameters
+using Crystals.Structure: Crystal
+using Crystals: Log
 const max_no_change = 2
 
 function no_opt_change_test(new, last)
@@ -65,7 +68,7 @@ function n4_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
         elseif i == 1 && params[4] > -tolerance
             update[1, 1] = -1
         elseif i * j * k == -1
-            error("Internal error")
+            Log.error("Internal error")
         end
     end
     rinv[:, :] = rinv * update
@@ -115,8 +118,8 @@ cell-vectors and angles closest to 90 degrees.
 """
 function gruber(
         cell::Matrix; tolerance=default_tolerance, itermax=50, max_no_change=10)
-    size(cell, 1) == size(cell, 2) || error("Matrix not rectangular")
-    abs(det(cell)) > tolerance || error("Singular matrix");
+    size(cell, 1) == size(cell, 2) || Log.error("Matrix not rectangular")
+    abs(det(cell)) > tolerance || Log.error("Singular matrix");
     const metric = transpose(cell) * cell
     params =
     vcat(diag(metric), [2metric[2, 3], 2metric[1, 3], 2metric[1, 2]])
@@ -164,7 +167,8 @@ function gruber(
         ) || break
         n8_action(params, rinv)
     end
-    iteration == itermax && error("Reached end of iteration without converging")
+    iteration == itermax &&
+        Log.error("Reached end of iteration without converging")
     cell * rinv
 end
 

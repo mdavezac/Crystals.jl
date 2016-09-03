@@ -5,6 +5,7 @@ using Crystals.Constants: default_tolerance
 using Crystals.Structure: Crystal, volume
 using Crystals.Gruber: gruber
 using Crystals.Utilities: into_voronoi, is_periodic, into_cell
+using Crystals: Log
 using AffineTransforms: AffineTransform
 using DataFrames: isna, by, nrow, eachrow, DataFrame
 
@@ -82,8 +83,10 @@ end
 
 """ Looks for internal translations """
 function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance)
-    any(isna(crystal[:position])) && error("Some positions are not available")
-    any(isna(crystal[:species])) && error("Some species are not available")
+    any(isna(crystal[:position])) &&
+        Log.error("Some positions are not available")
+    any(isna(crystal[:species])) &&
+        Log.error("Some species are not available")
 
     cell = gruber(crystal.cell)
 
@@ -154,7 +157,7 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
             if det(trial) < 0e0
                 trial[:, 2], trial[:, 1] = second, third
             end
-            det(trial) < 0e0 && error("Negative volume")
+            det(trial) < 0e0 && Log.error("Negative volume")
 
             int_cell = inv(trial) * cell
             all(abs(int_cell - round(Integer, int_cell) .< 1e-8)) || continue
@@ -166,7 +169,7 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
 
     # Found the new cell with smallest volume (e.g. primivite)
     V < volume(crystal) - tolerance ||
-        error("Found translation but no primitive cell.")
+        Log.error("Found translation but no primitive cell.")
 
     # now creates new lattice.
     result = Crystal(eltype(crystal.cell), gruber(new_cell), crystal.scale)
@@ -186,11 +189,11 @@ function primitive(crystal::Crystal; tolerance=default_tolerance)
     end
 
     nrow(crystal) % nrow(result) ≠ 0 &&
-        error("Nb of atoms in output not multiple of input.")
+        Log.error("Nb of atoms in output not multiple of input.")
 
     abs(
         nrow(crystal) * volume(result) - nrow(result) * volume(crystal)
-    ) < tolerance || error("Size and volumes do not match.")
+    ) < tolerance || Log.error("Size and volumes do not match.")
     result
 end
 

@@ -5,6 +5,7 @@ using DataFrames: AbstractDataFrame, DataFrame, NA, index, nrow, ncol, hcat!,
         nullable!, pool!, eachrow, eachcol, deleterows!, DataFrameRow
 using Crystals.Positions: Position, PositionDataArray,
         MIN_POSITION_SIZE, MAX_POSITION_SIZE
+using Crystals: Log
 import DataFrames
 import Base
 
@@ -27,18 +28,19 @@ type Crystal{T} <: AbstractCrystal
     atoms::DataFrame
 
     function Crystal(cell, scale, atoms::DataFrame)
-        size(cell, 1) == size(cell, 2) || error("Cell matrix is not square")
+        size(cell, 1) == size(cell, 2) ||
+            Log.error("Cell matrix is not square")
         MIN_POSITION_SIZE ≤ size(cell, 1) ≤ MAX_POSITION_SIZE ||
-        error("Incorrect column vector size")
+            Log.error("Incorrect column vector size")
         :position ∈ names(atoms) || nrow(atoms) == 0 ||
-        error("Input Dataframe has atoms without positions")
+            Log.error("Input Dataframe has atoms without positions")
         if nrow(atoms) == 0
             atoms[:position] = Vector{typeof(Position(cell[:, 1]))}()
         else
             eltype(atoms[:position]) <: Position ||
-                error("Positions do not have acceptable type")
+                Log.error("Positions do not have acceptable type")
             size(cell, 1) == length(eltype(atoms[:position])) ||
-                error("Cell and position dimensionality do not match")
+                Log.error("Cell and position dimensionality do not match")
         end
         new(scale, cell, atoms)
     end
@@ -57,8 +59,8 @@ function Crystal(T::Type, cell::Matrix, scale=1::Real; kwargs...)
             position = convert(PositionDataArray{T}, transpose(kwargs[i][2]))
         end
         size(cell, 1) == length(eltype(position)) ||
-        error("Dimensionality of cell and positions do not match")
-            push!(nkwargs, (:position, position))
+            Log.error("Dimensionality of cell and positions do not match")
+        push!(nkwargs, (:position, position))
     end
 
     atoms = DataFrame(; nkwargs...)
@@ -76,7 +78,7 @@ function Crystal(cell::Matrix, columns::Vector{Any}, names::Vector{Symbol},
 
         columns[i] = convert(PositionDataArray, value)
         size(cell, 1) == length(eltype(columns[i])) ||
-            error("Dimensionality of cell and positions do not match")
+            Log.error("Dimensionality of cell and positions do not match")
     end
 
     atoms = DataFrame(columns, names)
@@ -150,9 +152,8 @@ Base.append!(crystal::Crystal, atoms::DataFrame) =
 Base.push!(crystal::Crystal, x::Any) = push!(crystal.atoms, x)
 
 function Base.push!(crystal::Crystal, position::Position; kwargs...)
-    if length(position) ≠ size(crystal.cell, 1)
-        error("Dimensionality of input position and crystal do not match")
-    end
+    length(position) ≠ size(crystal.cell, 1) &&
+        Log.error("Dimensionality of input position and crystal do not match")
     row = Any[NA for u in 1:length(crystal.atoms)]
     row[index(crystal.atoms)[:position]] = position
     missing = Tuple{Symbol, Any}[]
