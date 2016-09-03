@@ -33,16 +33,7 @@ export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
 export point_group_operations, inner_translations, is_primitive, primitive
 export Lattices
 
-""" All logging goes through here """
-module Log
-  using Lumberjack: debug, info, warn, error, log, configure, _lumber_mill
-  export debug, info, warn, error, log, configure, set_log_level
-  function set_log_level(level::AbstractString)
-    for (name, truck) in _lumber_mill.timber_trucks
-        configure(truck, mode=level)
-    end
-  end
-end
+include("Logging.h")
 
 module Constants
   const default_tolerance = 1e-8
