@@ -1,5 +1,5 @@
 module Gruber
-export gruber
+export gruber, niggly
 
 using Crystals.Constants: default_tolerance
 using Crystals.Utilities: cell_parameters
@@ -106,23 +106,42 @@ function n8_action(params::Vector, rinv::Matrix)
     params[5] += 2params[1] + params[6]
 end
 
-""" Determines Gruber cell of an input cell
+"""
+    gruber(cell::Matrix;
+           tolerance::Real=default_tolerance, itermax::Unsigned=50,
+           max_no_change::Unsigned=10)
+
+Determines Gruber cell of an input cell.
 
 The Gruber cell is an optimal parameterization of a lattice, eg shortest
-cell-vectors and angles closest to 90 degrees.
+cell-vectors and angles closest to 90 degrees. The new cell is in the same basis
+as the origin cell: no rotation has been incured. The cell parameters are
+uniquely determined, even though the cell itself is not (certain symmetry
+operations leaving the structure unchanged may yield a more recognizable cell).
+If you want a unique cartesian cell (in a different cartesian basis), use
+the `niggly` algorithm.
 
 # Arguments
 * `cell::Matrix`: the input lattice cell-vectors. Cannot be singular.
-* `itermax::Int`: maximum number of iterations before bailing out
+* `itermax::Integer`: maximum number of iterations before bailing out
 * `tolerance::Real`: tolerance parameter when comparing real numbers
+* `max_no_change::Integer`: Maximum number of times to go through algorithm
+  without changes before bailing out
 """
-function gruber(
-        cell::Matrix; tolerance=default_tolerance, itermax=50, max_no_change=10)
+function gruber(cell::Matrix;
+                tolerance::Real=default_tolerance, itermax::Integer=50,
+                max_no_change::Integer=10)
     size(cell, 1) == size(cell, 2) || Log.error("Matrix not rectangular")
     abs(det(cell)) > tolerance || Log.error("Singular matrix");
+    if itermax ≤ 0
+        itermax = typemax(itermax)
+    end
+    if max_no_change ≤ 0
+        max_no_change = typemax(max_no_change)
+    end
+
     const metric = transpose(cell) * cell
-    params =
-    vcat(diag(metric), [2metric[2, 3], 2metric[1, 3], 2metric[1, 2]])
+    params = vcat(diag(metric), [2metric[2, 3], 2metric[1, 3], 2metric[1, 2]])
     rinv = eye(size(metric, 1))
     nochange, previous = 0, -params[1:3]
     iteration::Int = 0
@@ -171,5 +190,15 @@ function gruber(
         Log.error("Reached end of iteration without converging")
     cell * rinv
 end
+
+"""
+    niggly(cell::Matrix; kwargs...)
+
+Determines a unique cartesian cell equivalent to the input, with the shortest
+possible vectors and squarest angles. For an explanation of the parameters, see
+`gruber`.
+"""
+niggly(cell::Matrix, kwargs...) =
+    cell_parameters(cell_parameters(gruber(cell; kwargs...))...)
 
 end

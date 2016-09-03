@@ -26,10 +26,10 @@ properties:
 module Crystals
 export Position, PositionArray, PositionDataArray
 export Crystal, volume, round!
-export gruber
+export gruber, niggly
+export smith_normal_form
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
        supercell, cell_parameters, cell_parameters°
-export smith_normal_form
 export point_group_operations, inner_translations, is_primitive, primitive
 export Lattices
 
@@ -54,14 +54,14 @@ using .Positions
 include("Structure.jl")
 using .Structure
 
-include("Gruber.jl")
-using .Gruber
-
 include("SNF.jl")
 using .SNF
 
 include("utilities.jl")
 using .Utilities
+
+include("Gruber.jl")
+using .Gruber
 
 include("SpaceGroup.jl")
 using .SpaceGroup
