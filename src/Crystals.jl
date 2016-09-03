@@ -25,7 +25,7 @@ properties:
 """
 module Crystals
 export Position, PositionArray, PositionDataArray
-export Crystal, volume
+export Crystal, volume, round!
 export gruber
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
        supercell, cell_parameters, cell_parameters°

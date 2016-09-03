@@ -1,5 +1,5 @@
 module Structure
-export Crystal, volume
+export Crystal, volume, round!
 
 using DataFrames: AbstractDataFrame, DataFrame, NA, index, nrow, ncol, hcat!,
         nullable!, pool!, eachrow, eachcol, deleterows!, DataFrameRow
@@ -217,5 +217,23 @@ DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
 
 volume(cell::Matrix) = abs(det(cell))
 volume(crystal::Crystal) = volume(crystal.cell)
+
+"""
+    round!(crystal::Crystal, args...)
+
+Rounds the cell and position of a crystal. See `round` for possible parameters.
+"""
+function round!(crystal::Crystal, args...)
+    crystal.cell = round(crystal.cell, args...)
+    crystal[:position] = round(convert(Array, crystal[:position]), args...)
+    crystal
+end
+
+"""
+    round(crystal::Crystal, args...)
+
+Rounds the cell and position of a crystal. See `round` for possible parameters.
+"""
+Base.round(crystal::Crystal, args...) = round!(deepcopy(crystal), args...)
 
 end
