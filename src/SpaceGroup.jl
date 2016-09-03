@@ -81,7 +81,7 @@ function point_group_operations(cell::Matrix; tolerance::Real=default_tolerance)
     map(result) do x; AffineTransform(x, zeros(size(cell, 1))) end
 end
 
-""" Looks for internal translations """
+""" Looks for internal translations within a crystal """
 function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance)
     any(isna(crystal[:position])) &&
         Log.error("Some positions are not available")
