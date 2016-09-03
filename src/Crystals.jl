@@ -28,7 +28,7 @@ export Position, PositionArray, PositionDataArray
 export Crystal, volume
 export gruber
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
-       supercell
+       supercell, cell_parameters, cell_parameters°
 export smith_normal_form
 export point_group_operations, inner_translations, is_primitive, primitive
 export Lattices

@@ -103,3 +103,19 @@ facts("Supercell") do
   end
   @fact length(unique(result[:position])) --> nrow(result)
 end
+
+facts("cell parameters") do
+    cells = Matrix[
+      [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0],
+    ]
+    parameters = Vector[
+      [√0.5, √0.5, √0.5, 60, 60, 60]
+    ]
+    for (cell, params) in zip(cells, parameters)
+        actual_params = cell_parameters°(cell)
+        @fact [actual_params...] --> roughly([params...])
+        @fact [cell_parameters°(cell_parameters°(actual_params...))...] -->
+                roughly([params...])
+        @fact det(inv(cell) * cell_parameters°(actual_params...)) --> roughly(1)
+    end
+end

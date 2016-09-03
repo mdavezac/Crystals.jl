@@ -1,6 +1,6 @@
 module Utilities
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
-        supercell
+       supercell, cell_parameters, cell_parameters°
 
 using Crystals.Constants: default_tolerance
 using Crystals.Structure: Position, Crystal
@@ -46,8 +46,9 @@ origin_centered(pos, cell::Matrix) =
     cell * (mod(inv(cell) * pos .+ 0.5, -1) .+ 0.5)
 
 """
-Folds vector into first Brillouin zone of the input cell
+    into_voronoi(pos, cell::Matrix)
 
+Folds vector into first Brillouin zone of the input cell.
 Returns the periodic image with the smallest possible norm.
 """
 function into_voronoi(pos, cell::Matrix)
@@ -68,9 +69,21 @@ function into_voronoi(pos, cell::Matrix)
         result
 end
 
-""" Creates a supercell of an input lattice """
+"""
+    supercell(lattice::Crystal, supercell::Matrix; site_id=true, cell_id=true)
+
+Creates a supercell from an input lattice.
+
+# Parameters
+* `lattice::Crystal`: the original lattice
+* `supercell::Matrix`: the cell of the supercell in cartesian coordinates
+* `site_id::Bool`: Whether to add/modify an atomic property indicating the index
+  of the site in the original lattice
+* `cell_id::Bool`: Whether to add/modify an atomic property indicating the index
+  of the cell the site belongs to
+"""
 function supercell(lattice::Crystal, supercell::Matrix;
-                   site_id=true, cell_id=true)
+                   site_id::Bool=true, cell_id::Bool=true)
     nrow(lattice) == 0 && error("Lattice is empty")
 
     transform, quotient = hart_forcade(lattice.cell, supercell)
@@ -97,4 +110,60 @@ function supercell(lattice::Crystal, supercell::Matrix;
     end
     vcat(Crystal(eltype(lattice.cell), supercell, lattice.scale), all_atoms...)
 end
+
+"""
+```julia
+cell_parameters(a::AbstractFloat, b::AbstractFloat, c::AbstractFloat,
+                α::AbstractFloat=π/2, β::AbstractFloat=π/2,
+                γ::AbstractFloat=π/2)
+```
+Computes cell from input cell parameters [a, b, c, α, β, γ].  α, β, γ are in
+radian.
+"""
+function cell_parameters(a::AbstractFloat, b::AbstractFloat,
+                         c::AbstractFloat, α::AbstractFloat=π/2,
+						 β::AbstractFloat=π/2, γ::AbstractFloat=π/2)
+    cx = cos(β)
+    cy = (cos(α) - cos(β)cos(γ))/sin(γ)
+    [a b * cos(γ) c * cx;
+     0 b * sin(γ) c * cy;
+     0 0          c * √(1 - cx * cx - cy * cy)]
+end
+
+"""
+    cell_parameters(cell::Matrix)
+
+Parameters [a, b, c, α, β, γ] of the input cell. α, β, γ are in radian.
+"""
+function cell_parameters(cell::Matrix)
+    G = transpose(cell) * cell
+    a, b, c = √diag(G)
+    α = acos(0.5(G[2, 3] + G[3, 2])/(c * b))
+    β = acos(0.5(G[3, 1] + G[1, 3])/(a * c))
+    γ = acos(0.5(G[1, 2] + G[2, 1])/(a * b))
+    a, b, c, α, β, γ
+end
+
+"""
+    cell_parameters(cell::Crystal)
+
+Parameters [a, b, c, α, β, γ] of the input cell. `α`, `β`, `γ` are in radian.
+`a`, `b`, `c` include the scale factor `crystal.scale`.
+"""
+cell_parameters(crystal::Crystal) =
+    cell_parameters(crystal.scale * crystal.cell)
+
+""" Cell parameters with angles in degrees """
+function cell_parameters°(x::Any)
+    p = cell_parameters(x)
+    p[1], p[2], p[3], rad2deg(p[4]), rad2deg(p[5]), rad2deg(p[6])
+end
+
+""" Cell from parameters with angles in degrees """
+function cell_parameters°(a::AbstractFloat, b::AbstractFloat,
+                          c::AbstractFloat, α::AbstractFloat=90,
+                          β::AbstractFloat=90, γ::AbstractFloat=90)
+    cell_parameters(a, b, c, deg2rad(α), deg2rad(β), deg2rad(γ))
+end
+
 end
