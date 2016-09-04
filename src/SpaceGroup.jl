@@ -10,7 +10,7 @@ using AffineTransforms: AffineTransform
 using DataFrames: isna, by, nrow, eachrow, DataFrame
 
 """
-gvectors with equivalent norms
+    potential_equivalents(cell::Matrix; tolerance::Real=default_tolerance)
 
 Figures out vectors in the lattice defined by the cell which have the same
 lengths as the column vectors defining the cell. these new vectors are
@@ -81,7 +81,14 @@ function point_group_operations(cell::Matrix; tolerance::Real=default_tolerance)
     map(result) do x; AffineTransform(x, zeros(size(cell, 1))) end
 end
 
-""" Looks for internal translations within a crystal """
+""" Index to first instance of least represented species in crystal """
+function min_species_index(crystal::Crystal)
+    species_count = by(crystal.atoms, :species, d -> nrow(d))
+    species = species_count[findmin(species_count[:x1])[2], :species]
+    findfirst(crystal[:species], species)
+end
+
+""" Internal translations which leave a crystal unchanged """
 function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance)
     any(isna(crystal[:position])) &&
         Log.error("Some positions are not available")
@@ -125,13 +132,12 @@ is_primitive(crystal::Crystal; tolerance=default_tolerance) =
     length(inner_translations(crystal; tolerance=tolerance)) == 0
 
 """
-    primitive(crystal::Crystal; tolerance=default_tolerance)
+    primitive(crystal::Crystal; tolerance::Real=default_tolerance)
 
-    Computes the primitive cell of the input crystal.
-    If the crystal is primitive, it is returned as is, otherwise a new crystal is
-    returned.
+Computes the primitive cell of the input crystal. If the crystal is primitive,
+it is returned as is, otherwise a new crystal is returned.
 """
-function primitive(crystal::Crystal; tolerance=default_tolerance)
+function primitive(crystal::Crystal; tolerance::Real=default_tolerance)
     nrow(crystal) == 0 && return crystal
 
     cell = gruber(crystal.cell)
@@ -210,21 +216,7 @@ end
 """
 Computes space-group operations
 """
-function space_group(cell::Matrix, positions::Matrix, types::Vector;
-                     tolerance=default_tolerance)
-  @assert size(cell, 1) == size(cell, 2)
-  @assert size(positions, 1) == size(cell, 1) || length(positions) == 0
-  @assert length(types) == size(positions, 2)
-
-#   from numpy import dot, allclose, zeros
-#   from numpy.linalg import inv
-#   from . import gruber, Atom, into_voronoi, into_cell, is_primitive
-#   from .. import error
-#   if len(lattice) == 0:
-#       raise error.ValueError("Empty lattice")
-
-#   if not is_primitive(lattice, tolerance):
-#       raise error.ValueError("Input lattice is not primitive")
+function space_group(crystal::Crystal, tolerance::Real=default_tolerance)
 
 #   # Finds minimum translation.
 #   translation = lattice[0].pos

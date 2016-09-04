@@ -8,7 +8,7 @@ using Crystals.SNF: smith_normal_form
 using Crystals: Log
 using DataFrames: nrow
 """
-Hart-Forcade transform
+    hart_forcade(lattice::Matrix, supercell::Matrix; digits::Integer=8)
 
 Computes the cyclic group of a supercell with respect to a lattice. It makes it
 possible to identify the class of periodically equivalent cell that a given
@@ -16,7 +16,7 @@ position within the supercell belongs to.
 
 Returns the transform and the quotient.
 """
-function hart_forcade(lattice::Matrix, supercell::Matrix; digits=8)
+function hart_forcade(lattice::Matrix, supercell::Matrix; digits::Integer=8)
     fractional = convert(Matrix{Int64}, round(inv(lattice) * supercell, digits))
 
     snf, left, right = smith_normal_form(fractional)
@@ -25,20 +25,22 @@ function hart_forcade(lattice::Matrix, supercell::Matrix; digits=8)
 end
 
 """
-    is_periodic(a::Matrix, b::Matrix, cell::Matrix; tolerance=default_tolerance)
+    is_periodic(a::Matrix, b::Matrix, cell::Matrix;
+                tolerance::Real=default_tolerance)
     is_periodic(a::Union{Position, Vector}, b::Union{Position, Vector},
-                cell::Matrix; tolerance=default_tolerance)
+                cell::Matrix; tolerance::Real=default_tolerance)
 
 True if the positions are one-to-one periodic with respect to the input cell.
 Returns a boolean if the input are two positions, and an array of booleans if
 the input are arrays of positions.
 """
-is_periodic(a::Matrix, b::Matrix, cell::Matrix; tolerance=default_tolerance) =
+is_periodic(a::Matrix, b::Matrix, cell::Matrix;
+            tolerance::Real=default_tolerance) =
   all(abs(origin_centered(a - b, cell)) .< tolerance, 1)
 
 function is_periodic(a::Union{Position, Vector},
                      b::Union{Position, Vector},
-                     cell::Matrix; tolerance=default_tolerance)
+                     cell::Matrix; tolerance::Real=default_tolerance)
     all(abs(origin_centered(a - b, cell)) .< tolerance)
 end
 
@@ -103,6 +105,7 @@ end
 Creates a supercell from an input lattice.
 
 # Parameters
+
 * `lattice::Crystal`: the original lattice
 * `supercell::Matrix`: the cell of the supercell in cartesian coordinates
 * `site_id::Bool`: Whether to add/modify an atomic property indicating the index
