@@ -3,10 +3,14 @@ export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
        supercell, cell_parameters, cell_parameters°
 
 using Crystals.Constants: default_tolerance
-using Crystals.Structure: Position, Crystal
+using Crystals.Structure: Crystal
+using Crystals.Positions: Position, PositionArray, PositionDataArray
 using Crystals.SNF: smith_normal_form
 using Crystals: Log
 using DataFrames: nrow
+
+typealias PositionTypes Union{Position, Vector}
+
 """
     hart_forcade(lattice::Matrix, supercell::Matrix; digits::Integer=8)
 
@@ -38,21 +42,17 @@ is_periodic(a::Matrix, b::Matrix, cell::Matrix;
             tolerance::Real=default_tolerance) =
   all(abs(origin_centered(a - b, cell)) .< tolerance, 1)
 
-function is_periodic(a::Union{Position, Vector},
-                     b::Union{Position, Vector},
-                     cell::Matrix; tolerance::Real=default_tolerance)
+function is_periodic(a::PositionTypes, b::PositionTypes, cell::Matrix;
+                     tolerance::Real=default_tolerance)
     all(abs(origin_centered(a - b, cell)) .< tolerance)
 end
 
 """
-    into_cell(pos, cell::Matrix)
+    into_cell(pos::Union{Vector, Position}, cell::Matrix)
 
 Folds periodic positions into cell
 """
-into_cell(pos, cell::Matrix; tolerance::Real=default_tolerance) =
-    into_cell(pos, cell, inv(cell), tolerance=tolerance)
-
-function into_cell(pos, cell::Matrix, invcell::Matrix;
+function into_cell(pos::PositionTypes, cell::Matrix, invcell::Matrix;
                    tolerance::Real=default_tolerance)
     frac = mod(invcell * pos, 1)
     if tolerance > 0
@@ -69,33 +69,69 @@ end
 """
     origin_centered(pos, cell::Matrix)
 
-Folds vector back to origin
+Folds column vector(s)/Position(s) back to origin
 """
-origin_centered(pos, cell::Matrix) =
-    cell * (mod(inv(cell) * pos .+ 0.5, -1) .+ 0.5)
+origin_centered(pos::PositionTypes, cell::Matrix, invcell::Matrix) =
+    cell * (mod(invcell * pos .+ 0.5, -1) .+ 0.5)
 
 """
     into_voronoi(pos, cell::Matrix)
 
-Folds vector into first Brillouin zone of the input cell.
+Folds column vector(s)/Position(s) into first Brillouin zone of the input cell.
 Returns the periodic image with the smallest possible norm.
 """
-function into_voronoi(pos, cell::Matrix)
-    zcentered = origin_centered(pos, cell)
+function into_voronoi(pos::PositionTypes, cell::Matrix, invcell::Matrix)
+    zcentered = origin_centered(pos, cell, invcell)
     result = deepcopy(zcentered)
     norms = [norm(zcentered[:, i]) for i in 1:size(zcentered, 2)]
-        for n in 1:length(norms)
-            for i = -1:1, j = -1:1, k = -1:1
-                translation = cell * [i, j, k]
-                position = zcentered[:, n] + translation 
-                d = norm(position)
-                if d < norms[n]
-                    result[:, n] = position
-                    norms[n] = d
-                end
+    for n in 1:length(norms)
+        for i = -1:1, j = -1:1, k = -1:1
+            translation = cell * [i, j, k]
+            position = zcentered[:, n] + translation
+            d = norm(position)
+            if d < norms[n]
+                result[:, n] = position
+                norms[n] = d
             end
         end
-        result
+    end
+    result
+end
+
+for name in (:into_cell, :into_voronoi, :origin_centered)
+    @eval begin
+        $name(pos::PositionTypes, cell::Matrix; kwargs...) =
+            $name(pos, cell, inv(cell); kwargs...)
+        $name(positions::Union{PositionArray, PositionDataArray, Matrix},
+              cell::Matrix; kwargs...) =
+                    $name(positions, cell, inv(cell); kwargs...)
+        function $name(positions::PositionArray, cell::Matrix, invcell::Matrix;
+                       kwargs...)
+            result = similar(positions)
+            for i = 1:length(pos)
+               result[i] = $name(positions[i], cell, invcell; kwargs...)
+            end
+            result
+        end
+        function $name(positions::Matrix, cell::Matrix, invcell::Matrix;
+                       kwargs...)
+            result = similar(positions)
+            for i = 1:size(positions, 2)
+                result[:, i] = $name(positions[:, i], cell, invcell; kwargs...)
+            end
+            result
+        end
+        function $name(positions::PositionDataArray, cell::Matrix,
+                       invcell::Matrix; kwargs...)
+            result = similar(positions)
+            for i = 1:length(positions)
+                if !isna(result)
+                    result[i] = $name(positions[i], cell, invcell; kwargs...)
+                end
+            end
+            result
+        end
+    end
 end
 
 """

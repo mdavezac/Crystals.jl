@@ -3,7 +3,7 @@ using Crystals
 using FactCheck: @fact, facts, context, exitstatus, roughly,
                  exactly, @fact_throws, greater_than, not
 using DataFrames: nrow, ncol, NA, DataArray, DataFrame, deleterows!, NA,
-                DataFrameRow, eachrow
+                  DataFrameRow, eachrow, @data
 
 contains(x) = y -> x ∈ y
 all_integers(x::Array, ε::AbstractFloat=1e-8) = all(abs(x - round(Integer, x)) .< ε)
