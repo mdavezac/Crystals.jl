@@ -5,6 +5,7 @@ using Crystals: Log
 using FixedSizeArrays: FixedVectorNoTuple
 using DataFrames: isna, DataArray
 import Base
+import Base: *
 
 " All acceptable types for positions "
 abstract Position{T <:Real, N} <: FixedVectorNoTuple{N, T}
@@ -108,4 +109,26 @@ Base.convert(::Type{PositionDataArray}, x::Vector) =
     convert(PositionDataArray, transpose(transpose(x)))
 Base.convert{T <: Real}(::Type{PositionDataArray{T}}, x::Vector) =
     convert(PositionDataArray{T}, transpose(transpose(x)))
+
+function *{T <: Position}(matrix::Matrix, vectors::Array{T, 1})
+    size(matrix, 1) == length(eltype(vectors)) ||
+        Log.error("Inconsistent sizes")
+    result = similar(vectors)
+    for i in 1:length(vectors)
+        result[i] = matrix * vectors[i]
+    end
+    result
+end
+
+function *{T <: Position}(matrix::Matrix, vectors::DataArray{T, 1})
+    size(matrix, 1) == length(eltype(vectors)) ||
+        Log.error("Inconsistent sizes")
+    result = similar(vectors)
+    for i in 1:length(vectors)
+        if !isna(vectors, i)
+            result[i] = matrix * vectors[i]
+        end
+    end
+    result
+end
 end

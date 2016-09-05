@@ -74,3 +74,16 @@ facts("Convertions dataarray <--> array of positions") do
     @fact eltype(eltype(to_float)) <: AbstractFloat  --> true
   end
 end
+
+facts("Matrix - Position(Data)Array multiplication") do
+   cell = [-1 1 1; 1 -1 1; 1 1 -1]
+   positions = @data [Position(1, 1, 2), Position(3, 4, 5)]
+
+   const expected = cell * convert(Array, positions)
+   @fact convert(Array, cell * positions) --> expected
+   @fact convert(Array, cell * positions.data) --> expected
+
+   positions[1] = NA
+   @fact (cell * positions)[1] --> exactly(NA)
+   @fact (cell * positions)[2] --> not(exactly(NA))
+end
