@@ -85,3 +85,17 @@ facts("Make primitive") do
         @fact is_periodic(prim_pos, d_pos, zinc_blende.cell) --> true
     end
 end
+
+facts("Space group operations") do
+    context("fcc") do
+      fcc = Lattices.fcc()
+      ops = space_group(fcc)
+      @fact length(ops) --> 48
+      for op in ops
+          @fact op * [0, 0, 0] --> [0, 0, 0]
+      end
+    end
+
+    context("zinc_blend") do
+    end
+end

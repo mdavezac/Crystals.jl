@@ -38,13 +38,21 @@ True if the positions are one-to-one periodic with respect to the input cell.
 Returns a boolean if the input are two positions, and an array of booleans if
 the input are arrays of positions.
 """
-is_periodic(a::Matrix, b::Matrix, cell::Matrix;
-            tolerance::Real=default_tolerance) =
-  all(abs(origin_centered(a - b, cell)) .< tolerance, 1)
-
+function is_periodic(a::Matrix, b::Matrix, cell::Matrix;
+                     tolerance::Real=default_tolerance)
+    is_periodic(a, b, cell, inv(cell); tolerance=tolerance)
+end
+function is_periodic(a::Matrix, b::Matrix, cell::Matrix, invcell::Matrix;
+                     tolerance::Real=default_tolerance)
+  all(abs(origin_centered(a - b, cell, invcell)) .< tolerance, 1)
+end
 function is_periodic(a::PositionTypes, b::PositionTypes, cell::Matrix;
                      tolerance::Real=default_tolerance)
-    all(abs(origin_centered(a - b, cell)) .< tolerance)
+    is_periodic(a, b, cell, inv(cell); tolerance=tolerance)
+end
+function is_periodic(a::PositionTypes, b::PositionTypes, cell::Matrix,
+                     invcell::Matrix; tolerance::Real=default_tolerance)
+    all(abs(origin_centered(a - b, cell, invcell)) .< tolerance)
 end
 
 """
@@ -150,7 +158,8 @@ Creates a supercell from an input lattice.
   of the cell the site belongs to
 """
 function supercell(lattice::Crystal, supercell::Matrix;
-                   site_id::Bool=true, cell_id::Bool=true)
+                   site_id::Bool=true, cell_id::Bool=true,
+                   tolerance::Real=default_tolerance)
     nrow(lattice) == 0 && Log.error("Lattice is empty")
 
     transform, quotient = hart_forcade(lattice.cell, supercell)
@@ -164,11 +173,14 @@ function supercell(lattice::Crystal, supercell::Matrix;
     end
 
 
+    const invcell = inv(supercell)
     all_atoms = Any[]
     for i = 1:quotient[1], j = 1:quotient[2], k = 1:quotient[3]
         for n in 1:nrow(atoms)
             atoms[n, :position] = into_cell(
-            lattice[n, :position] + itransform * [i, j, k], supercell)
+                lattice[n, :position] + itransform * [i, j, k],
+                supercell, invcell; tolerance=tolerance
+            )
         end
         if cell_id
             atoms[:, :cell_id] = convert(Position, [i, j, k])

@@ -1,5 +1,6 @@
 module SpaceGroup
-export point_group_operations, inner_translations, is_primitive, primitive
+export point_group_operations, inner_translations, is_primitive, primitive,
+       space_group
 
 using Crystals.Constants: default_tolerance
 using Crystals.Structure: Crystal, volume
@@ -61,12 +62,12 @@ function point_group_operations(cell::Matrix; tolerance::Real=default_tolerance)
     const identity = eye(size(cell, 1))
     const invcell = inv(cell)
     for i in 1:size(avecs, 2), j in 1:size(bvecs, 2), k in 1:size(cvecs, 2)
-        # (potential) rotation in cartesian coordinates
+        # (potential) rotation in cartesian coordinates
         rotation = hcat(avecs[:, i], bvecs[:, j], cvecs[:, k])
-        # check operator is invertible
+        # check operator is invertible
         abs(det(rotation)) >= tolerance || continue
 
-        # rotation in fractional coordinates
+        # rotation in fractional coordinates
         rotation = rotation * invcell
         any(abs(rotation - identity) .> tolerance) || continue
 
@@ -74,7 +75,7 @@ function point_group_operations(cell::Matrix; tolerance::Real=default_tolerance)
         all(abs(rotation * transpose(rotation) - identity) .< tolerance) ||
             continue
 
-        # check rotation not in list 
+        # check rotation not in list
         index = findfirst(x -> all(abs(x - rotation) .< tolerance), result)
         index ≠ 0 || push!(result, rotation)
     end
@@ -85,7 +86,9 @@ end
 function min_species_index(crystal::Crystal)
     species_count = by(crystal.atoms, :species, d -> nrow(d))
     species = species_count[findmin(species_count[:x1])[2], :species]
-    findfirst(crystal[:species], species)
+    k = findfirst(crystal[:species], species)
+    @assert k ≠ 0 # that should not be possible
+    k
 end
 
 """ Internal translations which leave a crystal unchanged """
@@ -97,7 +100,7 @@ function inner_translations(crystal::Crystal; tolerance::Real=default_tolerance)
 
     cell = gruber(crystal.cell)
 
-    # find species with minimum number of atoms
+    # find species with minimum number of atoms
     species_count = by(crystal.atoms, :species, d -> nrow(d))
     species = species_count[findmin(species_count[:x1])[2], :species]
     k = findfirst(crystal[:species], species)
@@ -149,7 +152,7 @@ function primitive(crystal::Crystal; tolerance::Real=default_tolerance)
     push!(trans, cell[:, 2])
     push!(trans, cell[:, 3])
 
-    # Looks for cell with smallest volume 
+    # Looks for cell with smallest volume
     new_cell = deepcopy(crystal.cell)
     V = volume(new_cell)
     for (i, first) in enumerate(trans), (j, second) in enumerate(trans)
@@ -218,42 +221,37 @@ Computes space-group operations
 """
 function space_group(crystal::Crystal, tolerance::Real=default_tolerance)
 
-#   # Finds minimum translation.
-#   translation = lattice[0].pos
-#   cell = gruber(lattice.cell, tolerance=tolerance)
-#   invcell = inv(cell)
+    const cell = gruber(crystal.cell, tolerance=tolerance)
+    const invcell = inv(cell)
+    const site = crystal[min_species_index(crystal), [:position, :species]]
+    const point_group = point_group_operations(cell, tolerance=tolerance)
 
-#   point_group = cell_invariants(lattice.cell)
-#   assert len(point_group) > 0
+    # translations limited to those from one atom type to othe atom of same type
+    translations = crystal[crystal[:species] .== site[:species], :position]
+    translations .-= translations[:, 1]
+    translations = into_cell(translations, cell, invcell; tolerance=tolerance)
 
-#   centered = [Atom(into_cell(u.pos - translation, cell, invcell), u.type) for u in lattice]
-
-#   # translations limited to those from one atom type to othe atom of same type
-#   translations = [u.pos for u in centered if u.type == lattice[0].type]
-
-#   result = []
-#   for pg in point_group:
-#       for trial in translations:
-#           # Checks that this is a mapping of the lattice upon itself.
-#           for unmapped in centered:
-#               transpos = into_cell(dot(pg, unmapped.pos) + trial, cell, invcell)
-#               for atom in centered:
-#                   if atom.type != unmapped.type:
-#                       continue
-#                   if allclose(atom.pos, transpos, tolerance):
-#                       break
-#               # else executes only no atom is mapping of unmapped
-#               else:
-#                   break
-#           # else executes only if all positions in structures have mapping
-#           else:
-#               transform = zeros((len(trial) + 1, len(trial)), dtype='float64', order='F')
-#               transform[:3, :3] = pg
-#               transform[3, :] = into_voronoi(
-#                   trial - dot(pg, translation) + translation, cell, invcell)
-#               result.append(transform)
-#               # only one trial translation is possible, so break out of loop early
-#               break
-#   return result
+    result = AffineTransform{eltype(crystal.cell), size(crystal.cell, 1)}[]
+    for pg in point_group
+        for trial in translations
+            is_invariant = findfirst(eachrow(crystal)) do mapper
+                position = pg * mapper[:position] + trial
+                mappee = findfirst(eachrow(crystal)) do atom
+                    mapper[:species] == atom[:species] &&
+                    is_periodic(position, atom[:position], cell, invcell;
+                                tolerance=tolerance)
+                end
+                mappee == 0
+            end
+            if is_invariant == 0
+                translation = into_voronoi(
+                    trial - pg * site[1, :position] + site[1, :position],
+                    cell, invcell
+                )
+                push!(result, pg * AffineTransform(eye(ndims(pg)), translation))
+            end
+        end
+    end
+    result
 end
 end

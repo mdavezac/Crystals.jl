@@ -30,7 +30,8 @@ export gruber, niggly
 export smith_normal_form
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
        supercell, cell_parameters, cell_parameters°
-export point_group_operations, inner_translations, is_primitive, primitive
+export point_group_operations, inner_translations, is_primitive, primitive,
+       space_group
 export Lattices
 
 include("Logging.h")
@@ -61,5 +62,6 @@ module Lattices
   using Crystals.Crystal
   include("Bravais.jl")
   include("Binary.jl")
+  include("A2BX4.jl")
 end
 end # module

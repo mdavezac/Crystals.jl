@@ -4,8 +4,9 @@ export Position, PositionArray, PositionDataArray
 using Crystals: Log
 using FixedSizeArrays: FixedVector, NTuple
 using DataFrames: isna, DataArray
+using AffineTransforms: AffineTransform
 import Base
-import Base: *
+import Base: *, /
 
 " All acceptable types for positions "
 immutable Position{T <:Real, N} <: FixedVector{N, T}
@@ -40,6 +41,9 @@ function Base.convert{T <: Real, N}(::Type{Array}, x::PositionDataArray{T, N})
         Log.error("Cannot convert DataArray with NA's to desired type")
     T[x[i][j] for j = 1:N, i = 1:length(x)]
 end
+function Base.convert{T <: Real, N}(::Type{Matrix}, x::PositionDataArray{T, N})
+    convert(Array, x)
+end
 Base.convert(::Type{PositionDataArray}, x::Matrix) =
     DataArray(convert(PositionArray, x))
 Base.convert{T <: Real}(::Type{PositionDataArray{T}}, x::Matrix) =
@@ -66,7 +70,7 @@ end
 
 function *{T <: Position}(matrix::Matrix, vectors::DataArray{T, 1})
     size(matrix, 1) == length(eltype(vectors)) ||
-        Log.error("Inconsistent sizes")
+    Log.error("Inconsistent sizes")
     result = similar(vectors)
     for i in 1:length(vectors)
         if !isna(vectors, i)
@@ -75,4 +79,33 @@ function *{T <: Position}(matrix::Matrix, vectors::DataArray{T, 1})
     end
     result
 end
+
+*(A::AffineTransform, x::Position) = A * Vector(x)
+/(A::AffineTransform, x::Position) = A / Vector(x)
+
+for op in (:.-, :.+)
+    @eval begin
+        $op(a::PositionArray, b::Position) = $op(a, convert(eltype(a), b))
+        $op(a::PositionDataArray, b::Position) = $op(a, convert(eltype(a), b))
+        function Base.$op{T <: Real, N}(
+                        a::PositionDataArray{T, N}, b::Position{T, N})
+          result = similar(a)
+          for i in 1:length(a)
+              if !isna(a, i)
+                  result[i] = $op(a[i], b)
+              end
+          end
+          result
+        end
+        function Base.$op{T <: Real, N}(
+                    a::PositionDataArray{T, N}, b::Position{T, N})
+            result = similar(a)
+            for i in 1:length(a)
+                result[i] = $op(a[i], b)
+            end
+            result
+        end
+    end
+end
+
 end
