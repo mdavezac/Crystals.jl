@@ -1,18 +1,18 @@
 facts("Construction") do
-    @fact typeof(Position(1, 1)) --> is_subtype(Position2D{Int64})
+    @fact typeof(Position(1, 1)) --> is_subtype(Position)
 end
 
 facts("Convertion vector <--> position") do
    array = [1, 2, 3]
    position = Position(array)
-   @fact typeof(position) --> exactly(Position3D{eltype(array)})
+   @fact typeof(position) --> exactly(Position{eltype(array), 3})
    @fact [position...] --> array
    @fact typeof(convert(Array, position)) --> typeof(array)
    @fact convert(Array, position) --> array
    position = convert(Position, array)
    @fact eltype(position) --> eltype(array)
 
-   position = Position(Int8, array)
+   position = Position{Int8}(array)
    @fact eltype(position) --> Int8
    position = convert(Position{Int8}, array)
    @fact eltype(position) --> Int8
@@ -23,9 +23,9 @@ facts("Convertions matrix <--> array of positions") do
     matrix = transpose([1 2 3; 4 5 6])
     positions = convert(PositionArray, matrix)
 
-    @fact eltype(positions) --> exactly(Position3D{eltype(matrix)})
+    @fact eltype(positions) --> exactly(Position{eltype(matrix), 3})
     @fact typeof(positions) -->
-    exactly(Vector{Position3D{eltype(matrix)}})
+    exactly(Vector{Position{eltype(matrix), 3}})
     @fact length(positions) --> size(matrix, 2)
     @fact length(positions[1]) --> size(matrix, 1)
     for i = 1:length(positions)
@@ -54,9 +54,9 @@ facts("Convertions dataarray <--> array of positions") do
     matrix = transpose([1 2 3; 4 5 6])
     positions = convert(PositionDataArray, matrix)
 
-    @fact eltype(positions) --> exactly(Position3D{eltype(matrix)})
+    @fact eltype(positions) --> exactly(Position{eltype(matrix), 3})
     @fact typeof(positions) -->
-        exactly(DataArray{Position3D{eltype(matrix)}, 1})
+        exactly(DataArray{Position{eltype(matrix), 3}, 1})
     @fact length(positions) --> size(matrix, 2)
     @fact length(positions[1]) --> size(matrix, 1)
     for i = 1:length(positions)

@@ -1,6 +1,5 @@
 module CrystalTest
 using Crystals
-using Crystals.Positions: Position2D, Position3D, Position4D, Position
 using FactCheck: @fact, facts, context, exitstatus, roughly,
                  exactly, @fact_throws, greater_than, not
 using DataFrames: nrow, ncol, NA, DataArray, DataFrame, deleterows!, NA,

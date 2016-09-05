@@ -10,9 +10,9 @@ facts("Construction") do
     @fact nrow(crystal.atoms) --> 2
     @fact names(crystal.atoms) --> [:position]
     @fact crystal.atoms[1, :position] --> [1, 1, 1]
-    @fact crystal.atoms[2, :position].x --> 2
-    @fact crystal.atoms[2, :position].y --> 3
-    @fact crystal.atoms[2, :position].z --> 4
+    @fact crystal.atoms[2, :position][1] --> 2
+    @fact crystal.atoms[2, :position][2] --> 3
+    @fact crystal.atoms[2, :position][3] --> 4
   end
 
   context("2d with positions and species") do
@@ -30,7 +30,7 @@ facts("Construction") do
                       [:species, :position])
     @fact names(crystal.atoms) --> [:species, :position]
     @fact nrow(crystal.atoms) --> 2
-    @fact eltype(crystal.atoms[:position]) --> exactly(Position4D{Int64})
+    @fact eltype(crystal.atoms[:position]) --> exactly(Position{Int64, 4})
   end
 end
 
@@ -88,8 +88,8 @@ facts("Check direct indexing") do
       @fact crystal[:position] --> exactly(other[:position])
 
       crystal[[false, true]] = transpose([1 1 2; 3 3 2])
-      @fact crystal[1, :position] --> Position3D(1, 1, 2)
-      @fact crystal[2, :position] --> Position3D(3, 3, 2)
+      @fact crystal[1, :position] --> [1, 1, 2]
+      @fact crystal[2, :position] --> [3, 3, 2]
 
       crystal[[:extra_column, :species]] = "Al"
       @fact crystal[:extra_column] --> ["Al", "Al"]

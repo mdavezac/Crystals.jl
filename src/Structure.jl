@@ -3,8 +3,7 @@ export Crystal, volume, round!
 
 using DataFrames: AbstractDataFrame, DataFrame, NA, index, nrow, ncol, hcat!,
         nullable!, pool!, eachrow, eachcol, deleterows!, DataFrameRow
-using Crystals.Positions: Position, PositionDataArray,
-        MIN_POSITION_SIZE, MAX_POSITION_SIZE
+using Crystals.Positions: Position, PositionDataArray
 using Crystals: Log
 import DataFrames
 import Base
@@ -30,8 +29,6 @@ type Crystal{T} <: AbstractCrystal
     function Crystal(cell, scale, atoms::DataFrame)
         size(cell, 1) == size(cell, 2) ||
             Log.error("Cell matrix is not square")
-        MIN_POSITION_SIZE ≤ size(cell, 1) ≤ MAX_POSITION_SIZE ||
-            Log.error("Incorrect column vector size")
         :position ∈ names(atoms) || nrow(atoms) == 0 ||
             Log.error("Input Dataframe has atoms without positions")
         if nrow(atoms) == 0
