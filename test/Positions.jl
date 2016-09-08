@@ -87,3 +87,36 @@ facts("Matrix - Position(Data)Array multiplication") do
    @fact (cell * positions)[1] --> exactly(NA)
    @fact (cell * positions)[2] --> not(exactly(NA))
 end
+
+facts("Sum/differences") do
+    @fact Position(1, 2) + 1 --> Position(2, 3)
+    @fact Position(1, 2) + 1.5 --> Position(2.5, 3.5)
+
+    @fact Position(1, 2) + [-1, 2] --> Position(0, 4)
+    @fact Position(1, 2) + Position(-1, 2) --> Position(0, 4)
+    @fact Position(1, 2) + [-1.5, 2.5] --> Position(-0.5, 4.5)
+    @fact Position(1, 2) + Position(-1.5, 2.5) --> Position(-0.5, 4.5)
+
+    @fact Position(1, 2) - Position(-1.5, 2.5) --> Position(2.5, -0.5)
+    @fact Position(1, 2) - 1 --> Position(0, 1)
+
+    array = convert(PositionArray, [1 2 3; 4 5 6])
+    @fact array .+ Position(1, 2) --> convert(PositionArray, [2 3 4; 6 7 8])
+    @fact array .+ Position(1.5, 2) -->
+        convert(PositionArray, [2.5 3.5 4.5; 6 7 8])
+    @fact array .+ [1.5, 2] --> convert(PositionArray, [2.5 3.5 4.5; 6 7 8])
+
+    @fact array + array --> convert(PositionArray, [2 4 6; 8 10 12])
+    @fact array + [1 2 3; 4 5 6] --> convert(PositionArray, [2 4 6; 8 10 12])
+
+    array = convert(PositionDataArray, [1 2 3; 4 5 6])
+    @fact array .+ Position(1, 2) --> convert(PositionDataArray, [2 3 4; 6 7 8])
+    @fact array + Position(1, 2) --> convert(PositionDataArray, [2 3 4; 6 7 8])
+    @fact array .+ Position(1.5, 2) -->
+        convert(PositionDataArray, [2.5 3.5 4.5; 6 7 8])
+    @fact array + [1.5, 2] --> convert(PositionDataArray, [2.5 3.5 4.5; 6 7 8])
+
+    @fact array + array --> convert(PositionDataArray, [2 4 6; 8 10 12])
+    @fact array + [1 2 3; 4 5 6] -->
+        convert(PositionDataArray, [2 4 6; 8 10 12])
+end

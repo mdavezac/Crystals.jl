@@ -6,28 +6,28 @@ using FixedSizeArrays: FixedVector, NTuple
 using DataFrames: isna, DataArray
 using AffineTransforms: AffineTransform
 import Base
-import Base: *, /
+import Base: *, /, .+, .-
 
 " All acceptable types for positions "
-immutable Position{T <:Real, N} <: FixedVector{N, T}
+immutable Position{T <:Number, N} <: FixedVector{N, T}
     """ Underlying data """
     _::NTuple{N, T}
 end
 
 " Alias to vectors of positions "
-typealias PositionArray{T <: Real, N}  Vector{Position{T, N}}
+typealias PositionArray{T <: Number, N}  Vector{Position{T, N}}
 " Alias to data array of positions "
-typealias PositionDataArray{T <: Real, N} DataArray{Position{T, N}, 1}
+typealias PositionDataArray{T <: Number, N} DataArray{Position{T, N}, 1}
 
 # Add conversion rules from arrays
-Base.convert{T <: Real}(::Type{PositionArray{T}}, x::Matrix) =
+Base.convert{T <: Number}(::Type{PositionArray{T}}, x::Matrix) =
     convert(Vector{Position{T, size(x, 1)}}, x)
-Base.convert{T <: Real, N}(::Type{Vector{Position{T, N}}}, x::Matrix) =
+Base.convert{T <: Number, N}(::Type{Vector{Position{T, N}}}, x::Matrix) =
     Position{T, N}[Position{T, N}(x[:, u]) for u in 1:size(x, 2)]
-Base.convert{T <: Real, N}(::Type{Array}, x::Vector{Position{T, N}}) =
+Base.convert{T <: Number, N}(::Type{Array}, x::Vector{Position{T, N}}) =
     T[x[i][j] for j = 1:N, i = 1:length(x)]
 function Base.convert(::Type{PositionArray}, x::Matrix)
-    if eltype(x) <: Real
+    if eltype(x) <: Number
         const INNER = eltype(x)
     else
         const reducer = (x, y) -> promote_type(x, typeof(y))
@@ -36,26 +36,26 @@ function Base.convert(::Type{PositionArray}, x::Matrix)
     convert(PositionArray{INNER}, x)
 end
 
-function Base.convert{T <: Real, N}(::Type{Array}, x::PositionDataArray{T, N})
+function Base.convert{T <: Number, N}(::Type{Array}, x::PositionDataArray{T, N})
     any(isna(x)) &&
         Log.error("Cannot convert DataArray with NA's to desired type")
     T[x[i][j] for j = 1:N, i = 1:length(x)]
 end
-function Base.convert{T <: Real, N}(::Type{Matrix}, x::PositionDataArray{T, N})
+function Base.convert{T <: Number, N}(::Type{Matrix}, x::PositionDataArray{T, N})
     convert(Array, x)
 end
 Base.convert(::Type{PositionDataArray}, x::Matrix) =
     DataArray(convert(PositionArray, x))
-Base.convert{T <: Real}(::Type{PositionDataArray{T}}, x::Matrix) =
+Base.convert{T <: Number}(::Type{PositionDataArray{T}}, x::Matrix) =
     DataArray(convert(PositionArray{T}, x))
 
 Base.convert(::Type{PositionArray}, x::Vector) =
     convert(PositionArray, transpose(transpose(x)))
-Base.convert{T <: Real}(::Type{PositionArray{T}}, x::Vector) =
+Base.convert{T <: Number}(::Type{PositionArray{T}}, x::Vector) =
     convert(PositionArray{T}, transpose(transpose(x)))
 Base.convert(::Type{PositionDataArray}, x::Vector) =
     convert(PositionDataArray, transpose(transpose(x)))
-Base.convert{T <: Real}(::Type{PositionDataArray{T}}, x::Vector) =
+Base.convert{T <: Number}(::Type{PositionDataArray{T}}, x::Vector) =
     convert(PositionDataArray{T}, transpose(transpose(x)))
 
 function *{T <: Position}(matrix::Matrix, vectors::Array{T, 1})
@@ -83,28 +83,50 @@ end
 *(A::AffineTransform, x::Position) = A * Vector(x)
 /(A::AffineTransform, x::Position) = A / Vector(x)
 
-for op in (:.-, :.+)
+for op in (:+, :-)
     @eval begin
-        $op(a::PositionArray, b::Position) = $op(a, convert(eltype(a), b))
-        $op(a::PositionDataArray, b::Position) = $op(a, convert(eltype(a), b))
-        function Base.$op{T <: Real, N}(
-                        a::PositionDataArray{T, N}, b::Position{T, N})
-          result = similar(a)
-          for i in 1:length(a)
-              if !isna(a, i)
-                  result[i] = $op(a[i], b)
-              end
-          end
-          result
+        function Base.$op(p::Position, t::Number)
+            const T = promote_type(eltype(p), typeof(t))
+            const N = length(p)
+            Position{T, N}([$op(v, t) for v in p])
         end
-        function Base.$op{T <: Real, N}(
-                    a::PositionDataArray{T, N}, b::Position{T, N})
-            result = similar(a)
-            for i in 1:length(a)
-                result[i] = $op(a[i], b)
-            end
-            result
+        function Base.$op(p::Position, t::Vector)
+            length(p) ≠ length(t) && Log.error("Inconsistent input sizes")
+            const T = promote_type(eltype(p), eltype(t))
+            const N = length(p)
+            Position{T, N}([$op(p[i], t[i]) for i in 1:length(p)])
         end
+        function Base.$op{T <: Number, N}(p::PositionArray{T, N}, t::Matrix)
+            const NN = length(eltype(p))
+            size(t) == (NN, length(p)) ||
+                Log.error("Inconsistent Position and matrix sizes")
+            const TT = promote_type(eltype(eltype(p)), eltype(t))
+            Position{TT, NN}[$op(p[i], t[:, i]) for i in 1:length(p)]
+        end
+        Base.$op{T <: Number, N}(p::PositionDataArray{T, N}, t::Matrix) =
+            $op(p.data, t)
+    end
+end
+for (dotop, op) in ((:.+, :+), (:.-, :-))
+    @eval begin
+        function $dotop{T <: Number, N}(p::PositionArray{T, N}, t::Position)
+            length(eltype(p)) == length(t) || Log.error("Inconsistent sizes")
+            const TT = promote_type(eltype(eltype(p)), eltype(t))
+            const NN = length(t)
+            Position{TT, NN}[$op(v, t) for v in p]
+        end
+        function $dotop{T <: Number, N}(p::PositionArray{T, N}, t::Vector)
+            const TT = promote_type(eltype(eltype(p)), eltype(t))
+            $dotop(p, Position{TT}(t))
+        end
+        Base.$dotop{T <: Number, N}(p::PositionDataArray{T, N}, t::Vector) =
+            $dotop(p.data, t)
+        Base.$op{T <: Number, N}(p::PositionDataArray{T, N}, t::Vector) =
+            $dotop(p.data, t)
+        Base.$dotop{T <: Number, N}(p::PositionDataArray{T, N}, t::Position) =
+            $dotop(p.data, t)
+        Base.$op{T <: Number, N}(p::PositionDataArray{T, N}, t::Position) =
+            $dotop(p.data, t)
     end
 end
 
