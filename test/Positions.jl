@@ -115,6 +115,7 @@ facts("Sum/differences") do
     @fact array .+ Position(1.5, 2) -->
         convert(PositionDataArray, [2.5 3.5 4.5; 6 7 8])
     @fact array + [1.5, 2] --> convert(PositionDataArray, [2.5 3.5 4.5; 6 7 8])
+    @fact typeof(array + [1.5, 2]) --> is_subtype(PositionDataArray{Float64, 2})
 
     @fact array + array --> convert(PositionDataArray, [2 4 6; 8 10 12])
     @fact array + [1 2 3; 4 5 6] -->

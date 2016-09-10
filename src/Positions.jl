@@ -104,7 +104,7 @@ for op in (:+, :-)
             Position{TT, NN}[$op(p[i], t[:, i]) for i in 1:length(p)]
         end
         Base.$op{T <: Number, N}(p::PositionDataArray{T, N}, t::Matrix) =
-            $op(p.data, t)
+            DataArray($op(p.data, t), p.na)
     end
 end
 for (dotop, op) in ((:.+, :+), (:.-, :-))
@@ -120,13 +120,13 @@ for (dotop, op) in ((:.+, :+), (:.-, :-))
             $dotop(p, Position{TT}(t))
         end
         Base.$dotop{T <: Number, N}(p::PositionDataArray{T, N}, t::Vector) =
-            $dotop(p.data, t)
+            DataArray($dotop(p.data, t), p.na)
         Base.$op{T <: Number, N}(p::PositionDataArray{T, N}, t::Vector) =
-            $dotop(p.data, t)
+            DataArray($dotop(p.data, t), p.na)
         Base.$dotop{T <: Number, N}(p::PositionDataArray{T, N}, t::Position) =
-            $dotop(p.data, t)
+            DataArray($dotop(p.data, t), p.na)
         Base.$op{T <: Number, N}(p::PositionDataArray{T, N}, t::Position) =
-            $dotop(p.data, t)
+            DataArray($dotop(p.data, t), p.na)
     end
 end
 
