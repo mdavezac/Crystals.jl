@@ -96,6 +96,10 @@ facts("Space group operations") do
       end
     end
 
-    context("zinc_blend") do
+    context("b5") do
+        b5 = Lattices.b5()
+        ops = space_group(b5)
+        @fact length(ops) --> 48
+        @fact count(ops) do op; all(abs(op.offset) .< 1e-12) end --> 12
     end
 end
