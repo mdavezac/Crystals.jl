@@ -7,7 +7,7 @@ using Crystals.Structure: Crystal
 using Crystals.Positions: Position, PositionArray, PositionDataArray
 using Crystals.SNF: smith_normal_form
 using Crystals: Log
-using DataFrames: nrow
+using DataFrames: nrow, DataArray
 
 typealias PositionTypes Union{Position, Vector}
 
@@ -110,32 +110,34 @@ for name in (:into_cell, :into_voronoi, :origin_centered)
     @eval begin
         $name(pos::PositionTypes, cell::Matrix; kwargs...) =
             $name(pos, cell, inv(cell); kwargs...)
-        $name(positions::Union{PositionArray, PositionDataArray, Matrix},
-              cell::Matrix; kwargs...) =
-                    $name(positions, cell, inv(cell); kwargs...)
-        function $name(positions::PositionArray, cell::Matrix, invcell::Matrix;
+        $name(positions::Union{PositionArray, Matrix}, cell::Matrix; kwargs...)=
+            $name(positions, cell, inv(cell); kwargs...)
+        function $name(positions::Matrix, cell::Matrix, invcell::Matrix;
                        kwargs...)
             result = similar(positions)
-            for i = 1:length(pos)
-               result[i] = $name(positions[i], cell, invcell; kwargs...)
+            for i = 1:length(positions)
+               result[i] = $name(positions[:, i], cell, invcell; kwargs...)
             end
             result
+        end
+        function $name{T <: Number, N}(positions::PositionArray{T, N},
+                                       cell::Matrix, invcell::Matrix;
+                                       kwargs...)
+            result = similar(positions)
+            for i = 1:length(positions)
+                result[i] = $name(positions[i], cell, invcell; kwargs...)
+            end
+            result
+        end
+        function $name{T <: Number, N}(positions::PositionDataArray{T, N},
+                                       args...; kwargs...)
+            DataArray($name(positions.data, args...), positions.na)
         end
         function $name(positions::Matrix, cell::Matrix, invcell::Matrix;
                        kwargs...)
             result = similar(positions)
             for i = 1:size(positions, 2)
                 result[:, i] = $name(positions[:, i], cell, invcell; kwargs...)
-            end
-            result
-        end
-        function $name(positions::PositionDataArray, cell::Matrix,
-                       invcell::Matrix; kwargs...)
-            result = similar(positions)
-            for i = 1:length(positions)
-                if !isna(result)
-                    result[i] = $name(positions[i], cell, invcell; kwargs...)
-                end
             end
             result
         end
