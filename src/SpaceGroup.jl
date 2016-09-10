@@ -228,17 +228,17 @@ function space_group(crystal::Crystal, tolerance::Real=default_tolerance)
 
     # translations limited to those from one atom type to othe atom of same type
     translations = crystal[crystal[:species] .== site[:species], :position]
-    translations .-= translations[:, 1]
+    translations -= translations[1]
     translations = into_cell(translations, cell, invcell; tolerance=tolerance)
 
     result = AffineTransform{eltype(crystal.cell), size(crystal.cell, 1)}[]
     for pg in point_group
         for trial in translations
             is_invariant = findfirst(eachrow(crystal)) do mapper
-                position = pg * mapper[:position] + trial
+                position = pg * (mapper[:position] - site[1, :position]) + trial
                 mappee = findfirst(eachrow(crystal)) do atom
                     mapper[:species] == atom[:species] &&
-                    is_periodic(position, atom[:position], cell, invcell;
+                    is_periodic(position, atom[:position] - site[1, :position], cell, invcell;
                                 tolerance=tolerance)
                 end
                 mappee == 0
@@ -252,6 +252,11 @@ function space_group(crystal::Crystal, tolerance::Real=default_tolerance)
             end
         end
     end
+    Log.info(
+        "$(length(result)) symmetry operations found, with " *
+        "$(count(result) do op; all(abs(op.offset) .< 1e-8) end) " *
+        "pure symmetries."
+    )
     result
 end
 end
