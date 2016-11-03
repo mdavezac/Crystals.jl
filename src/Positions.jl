@@ -2,6 +2,7 @@ module Positions
 export Position, PositionArray, PositionDataArray
 
 using Crystals: Log
+using Unitful: Units, @u_str
 using FixedSizeArrays: FixedVector, NTuple
 using DataFrames: isna, DataArray
 using AffineTransforms: AffineTransform
@@ -127,6 +128,15 @@ for (dotop, op) in ((:.+, :+), (:.-, :-))
             DataArray($dotop(p.data, t), p.na)
         Base.$op{T <: Number, N}(p::PositionDataArray{T, N}, t::Position) =
             DataArray($dotop(p.data, t), p.na)
+    end
+end
+
+# Makes it easier to create dimensionalize position
+# see arraymath.jl/Unitful.jl for similar code
+for op in (:.*, :*)
+    @eval begin
+        ($op)(A::Units, B::Position) = Position((A * u for u in B)...)
+        ($op)(B::Position, A::Units) = Position((A * u for u in B)...)
     end
 end
 

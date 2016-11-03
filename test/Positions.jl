@@ -120,3 +120,9 @@ end
     @test array + [1 2 3; 4 5 6] ==
         convert(PositionDataArray, [2 4 6; 8 10 12])
 end
+
+@testset "Positions with units" begin
+    position = Position(1, 2)u"m"
+    @test position[1] == 1u"m"
+    @test position[2] == 2u"m"
+end
