@@ -113,10 +113,10 @@ for name in (:into_cell, :into_voronoi, :origin_centered)
         $name(positions::Union{PositionArray, Matrix}, cell::Matrix; kwargs...)=
             $name(positions, cell, inv(cell); kwargs...)
         function $name(positions::Matrix, cell::Matrix, invcell::Matrix;
-                       kwargs...)
+            kwargs...)
             result = similar(positions)
-            for i = 1:length(positions)
-               result[i] = $name(positions[:, i], cell, invcell; kwargs...)
+            for i = 1:size(positions, 2)
+                result[:, i] = $name(positions[:, i], cell, invcell; kwargs...)
             end
             result
         end
@@ -132,14 +132,6 @@ for name in (:into_cell, :into_voronoi, :origin_centered)
         function $name{T <: Number, N}(positions::PositionDataArray{T, N},
                                        args...; kwargs...)
             DataArray($name(positions.data, args...), positions.na)
-        end
-        function $name(positions::Matrix, cell::Matrix, invcell::Matrix;
-                       kwargs...)
-            result = similar(positions)
-            for i = 1:size(positions, 2)
-                result[:, i] = $name(positions[:, i], cell, invcell; kwargs...)
-            end
-            result
         end
     end
 end
