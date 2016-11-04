@@ -2,7 +2,7 @@ module Positions
 export Position, PositionArray, PositionDataArray
 
 using Crystals: Log
-using Unitful: Units, @u_str
+using Unitful: Units, Quantity
 using FixedSizeArrays: FixedVector, NTuple
 using DataFrames: isna, DataArray
 using AffineTransforms: AffineTransform
@@ -139,5 +139,13 @@ for op in (:.*, :*)
         ($op)(B::Position, A::Units) = Position((A * u for u in B)...)
     end
 end
+
+"""
+is_fractional(pos::Position)
+
+True if the positions is given in fractional coordinates.
+A position is in fractional coordinates if it is dimensionless
+"""
+is_fractional(pos::Position) = !(eltype(position) <: Quantity)
 
 end
