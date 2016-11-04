@@ -1,245 +1,254 @@
-facts("Construction") do
-  context("Empty 2d") do
-    crystal = Crystal(eye(2), 2e0)
-    @fact nrow(crystal.atoms) --> 0
-    @fact names(crystal.atoms) --> [:position]
+@testset "> Construction" begin
+  @testset ">> Empty 2d" begin
+    crystal = Crystal(eye(2)u"nm")
+    @test nrow(crystal.atoms) == 0
+    @test names(crystal.atoms) == [:position]
   end
 
-  context("3d with only positions") do
-    crystal = Crystal(eye(3), position=transpose([1 1 1; 2 3 4]))
-    @fact nrow(crystal.atoms) --> 2
-    @fact names(crystal.atoms) --> [:position]
-    @fact crystal.atoms[1, :position] --> [1, 1, 1]
-    @fact crystal.atoms[2, :position][1] --> 2
-    @fact crystal.atoms[2, :position][2] --> 3
-    @fact crystal.atoms[2, :position][3] --> 4
+  @testset ">> 3d with only positions" begin
+    crystal = Crystal(eye(3)u"nm", position=transpose([1 1 1; 2 3 4])u"nm")
+    @test nrow(crystal.atoms) == 2
+    @test names(crystal.atoms) == [:position]
+    @test crystal.atoms[1, :position] == [1, 1, 1]u"nm"
+    @test crystal.atoms[2, :position][1] == 2u"nm"
+    @test crystal.atoms[2, :position][2] == 3u"nm"
+    @test crystal.atoms[2, :position][3] == 4u"nm"
   end
 
-  context("2d with positions and species") do
-    crystal = Crystal(eye(2), position=[1 1 1; 2 3 4], species=["Al", "O", "O"])
-    @fact nrow(crystal.atoms) --> 3
-    @fact names(crystal.atoms) --> [:position, :species]
+  @testset ">> 3d with fractional" begin
+      crystal = Crystal(eye(3)u"nm", position=transpose([1 1 1; 2 3 4]))
+      @test nrow(crystal.atoms) == 2
+      @test names(crystal.atoms) == [:position]
+      @test crystal.atoms[1, :position] == [1, 1, 1]
+      @test crystal.atoms[2, :position][1] == 2
+      @test crystal.atoms[2, :position][2] == 3
+      @test crystal.atoms[2, :position][3] == 4
+  end
+
+  @testset ">> 2d with positions and species" begin
+    crystal = Crystal(
+        eye(2)u"nm", position=[1 1 1; 2 3 4]u"nm", species=["Al", "O", "O"])
+    @test nrow(crystal.atoms) == 3
+    @test names(crystal.atoms) == [:position, :species]
 
     # Index of position column depends on input
-    crystal = Crystal(eye(2), species=["Al", "O", "O"], position=[1 1 1; 2 3 4])
-    @fact names(crystal.atoms) --> [:species, :position]
+    crystal = Crystal(
+        eye(2)u"nm", species=["Al", "O", "O"], position=[1 1 1; 2 3 4]u"nm")
+    @test names(crystal.atoms) == [:species, :position]
   end
 
-  context("4d, constructing via arguments") do
-    crystal = Crystal(eye(4), Any[["Al", "O"], [1 1; 2 2; 3 3; 4 4]],
+  @testset ">> 4d, constructing via arguments" begin
+    crystal = Crystal(eye(4)u"nm", Any[["Al", "O"], [1 1; 2 2; 3 3; 4 4]u"nm"],
                       [:species, :position])
-    @fact names(crystal.atoms) --> [:species, :position]
-    @fact nrow(crystal.atoms) --> 2
-    @fact eltype(crystal.atoms[:position]) --> exactly(Position{Int64, 4})
+    @test names(crystal.atoms) == [:species, :position]
+    @test nrow(crystal.atoms) == 2
+    @test eltype(crystal.atoms[:position]) === Position{eltype([1, 1]u"nm"), 4}
   end
 end
 
-facts("Check direct indexing") do
-  context("getindex") do
-    crystal = Crystal(eye(2), species=["Al", "O", "O"],
+@testset "> Check direct indexing" begin
+  @testset ">> getindex" begin
+    crystal = Crystal(eye(2)u"nm", species=["Al", "O", "O"],
                       position=[1 1 1; 2 3 4], label=[:+, :-, :-])
-    @fact crystal[:label] --> [:+, :-, :-]
-    @fact crystal[1, :position] --> [1, 2]
-    @fact crystal[2, :position] --> [1, 3]
-    @fact crystal[end, :position] --> [1, 4]
-    @fact crystal[:, end] --> [:+, :-, :-]
-    @fact crystal[1, [:position, :label]] -->
-        Crystal(eye(2), position=[1, 2], label=[:+]).atoms
-    @fact crystal[[1, 3], [:position, :label]] -->
-        Crystal(eye(2), position=[1 1; 2 4], label=[:+, :-]).atoms
-    @fact crystal[:] --> crystal.atoms
+    @test crystal[:label] == [:+, :-, :-]
+    @test crystal[1, :position] == [1, 2]
+    @test crystal[2, :position] == [1, 3]
+    @test crystal[end, :position] == [1, 4]
+    @test crystal[:, end] == [:+, :-, :-]
+    @test crystal[1, [:position, :label]] ==
+        Crystal(eye(2)u"nm", position=[1, 2], label=[:+]).atoms
+    @test crystal[[1, 3], [:position, :label]] ==
+        Crystal(eye(2)u"nm", position=[1 1; 2 4], label=[:+, :-]).atoms
+    @test crystal[:] == crystal.atoms
   end
 
-  context("setindex!") do
-    crystal = Crystal(eye(3), species=["Al", "O"],
-                      position=transpose([1 1 1; 2 3 4]),
+  @testset ">> setindex!" begin
+    crystal = Crystal(eye(3)u"nm", species=["Al", "O"],
+                      position=transpose([1 1 1; 2 3 4])u"nm",
                       label=[:+, :-])
-    context("Single column") do
+    @testset ">>> Single column" begin
       crystal[:label] = [:z, :a]
-      @fact crystal[:label] --> [:z, :a]
+      @test crystal[:label] == [:z, :a]
       crystal[3] = [:Z, :A]
-      @fact crystal[:label] --> [:Z, :A]
+      @test crystal[:label] == [:Z, :A]
 
-      crystal[:position] = transpose([1 3 4; 2 2 6])
-      @fact crystal[1, :position] --> [1, 3, 4]
-      @fact crystal[2, :position] --> [2, 2, 6]
+      crystal[:position] = transpose([1 3 4; 2 2 6])u"nm"
+      @test crystal[1, :position] == [1, 3, 4]u"nm"
+      @test crystal[2, :position] == [2, 2, 6]u"nm"
 
       crystal[2] = transpose([6 2 8; 4 3 2])
-      @fact crystal[1, :position] --> [6, 2, 8]
-      @fact crystal[2, :position] --> [4, 3, 2]
+      @test crystal[1, :position] == [6, 2, 8]
+      @test crystal[2, :position] == [4, 3, 2]
     end
 
-    context("Multi-column") do
+    @testset ">>> Multi-column" begin
       original = deepcopy(crystal)
-      other = Crystal(eye(3), species=["Ru", "Ta"],
+      other = Crystal(eye(3)u"nm", species=["Ru", "Ta"],
                         position=transpose([2 4 6; 4 1 2]),
                         label=[:a, :b])
       crystal[[:species, :label]] = other[[:species, :label]]
-      @fact crystal[:species] --> exactly(other[:species])
-      @fact crystal[:label] --> exactly(other[:label])
+      @test crystal[:species] === other[:species]
+      @test crystal[:label] === other[:label]
 
       crystal[[:species, :label]] = original.atoms[[:species, :label]]
-      @fact crystal[:species] --> exactly(original[:species])
-      @fact crystal[:label] --> exactly(original[:label])
+      @test crystal[:species] === original[:species]
+      @test crystal[:label] === original[:label]
 
       crystal[[false, true]] = other[[:position]]
-      @fact crystal[:species] --> exactly(original[:species])
-      @fact crystal[:label] --> exactly(original[:label])
-      @fact crystal[:position] --> exactly(other[:position])
+      @test crystal[:species] === original[:species]
+      @test crystal[:label] === original[:label]
+      @test crystal[:position] === other[:position]
 
       crystal[[false, true]] = transpose([1 1 2; 3 3 2])
-      @fact crystal[1, :position] --> [1, 1, 2]
-      @fact crystal[2, :position] --> [3, 3, 2]
+      @test crystal[1, :position] == [1, 1, 2]
+      @test crystal[2, :position] == [3, 3, 2]
 
       crystal[[:extra_column, :species]] = "Al"
-      @fact crystal[:extra_column] --> ["Al", "Al"]
-      @fact crystal[:species] --> ["Al", "Al"]
+      @test crystal[:extra_column] == ["Al", "Al"]
+      @test crystal[:species] == ["Al", "Al"]
     end
 
-    context("Single-row, Single-Column") do
+    @testset ">>> Single-row, Single-Column" begin
       crystal[1, :label] = :aa
-      @fact crystal[1, :label] --> :aa
+      @test crystal[1, :label] == :aa
 
       crystal[1, :position] = [1, 2, 3]
-      @fact crystal[1, :position] --> [1, 2, 3]
-      @fact typeof(crystal[1, :position]) --> x -> x <: Position
+      @test crystal[1, :position] == [1, 2, 3]
+      @test typeof(crystal[1, :position]) <: Position
 
       crystal[1, :position] = 1
-      @fact crystal[1, :position] --> [1, 1, 1]
+      @test crystal[1, :position] == [1, 1, 1]
 
       crystal[1, :position] = :2
-      @fact crystal[1, :position] --> [2, 2, 2]
+      @test crystal[1, :position] == [2, 2, 2]
       crystal[1, :position] = :2, :3, :4
-      @fact crystal[1, :position] --> [2, 3, 4]
+      @test crystal[1, :position] == [2, 3, 4]
 
-      @fact_throws MethodError crystal[1, :position] = :a
-      @fact_throws ErrorException crystal[1, :nonexistent] = "Al"
+      @test_throws MethodError crystal[1, :position] = :a
+      @test_throws ErrorException crystal[1, :nonexistent] = "Al"
     end
 
-    context("Single-row, Multi-Column") do
+    @testset "Single-row, Multi-Column" begin
       crystal[1, [:species, :label]] = "aha"
-      @fact crystal[1, :species] --> "aha"
-      @fact crystal[1, :label] --> :aha
+      @test crystal[1, :species] == "aha"
+      @test crystal[1, :label] == :aha
 
       crystal[2, [true, false]] = "zha"
-      @fact crystal[2, :species] --> "zha"
-      @fact_throws ErrorException crystal[1, [:species, :nonexistent]] = "Al"
+      @test crystal[2, :species] == "zha"
+      @test_throws ErrorException crystal[1, [:species, :nonexistent]] = "Al"
     end
 
-    context("Multi-row, single-Column") do
-      crystal = Crystal(eye(3), species=["Al", "O", "O"],
+    @testset ">>> Multi-row, single-Column" begin
+      crystal = Crystal(eye(3)u"nm", species=["Al", "O", "O"],
                       position=transpose([1 1 1; 2 3 4; 4 5 2]),
                       label=[:+, :-, :0])
       crystal[[1, 3], :species] = "Ala"
-      @fact crystal[:species] --> ["Ala", "O", "Ala"]
+      @test crystal[:species] == ["Ala", "O", "Ala"]
 
       crystal[[2, 3], :species] = ["H", "B"]
-      @fact crystal[:species] --> ["Ala", "H", "B"]
+      @test crystal[:species] == ["Ala", "H", "B"]
 
       crystal[[true, false, true], 2] = transpose([1 2 3; 4 5 6])
-      @fact crystal[1, :position] --> [1, 2, 3]
-      @fact crystal[2, :position] --> [2, 3, 4]
-      @fact crystal[3, :position] --> [4, 5, 6]
+      @test crystal[1, :position] == [1, 2, 3]
+      @test crystal[2, :position] == [2, 3, 4]
+      @test crystal[3, :position] == [4, 5, 6]
     end
 
-    context("Multi-row, multi-Column") do
-      crystal = Crystal(eye(3), species=["Al", "O", "O"],
+    @testset "Multi-row, multi-Column" begin
+      crystal = Crystal(eye(3)u"nm", species=["Al", "O", "O"],
                       position=transpose([1 1 1; 2 3 4; 4 5 2]),
                       label=[:+, :-, :0])
-      other = Crystal(eye(3), species=["H", "B", "C"],
+      other = Crystal(eye(3)u"nm", species=["H", "B", "C"],
                       position=transpose([2 1 2; 3 4 3; 5 2 5]),
                       label=[:a, :b, :c])
-      crystal[[true, false, true], [:label, :position]] =
-          other[1:2, [3, 2]]
-      @fact crystal[:label] --> [:a, :-, :b]
-      @fact crystal[1, :position] --> [2, 1, 2]
-      @fact crystal[2, :position] --> [2, 3, 4]
-      @fact crystal[3, :position] --> [3, 4, 3]
+      crystal[[true, false, true], [:label, :position]] = other[1:2, [3, 2]]
+      @test crystal[:label] == [:a, :-, :b]
+      @test crystal[1, :position] == [2, 1, 2]
+      @test crystal[2, :position] == [2, 3, 4]
+      @test crystal[3, :position] == [3, 4, 3]
 
       crystal[[false, true, true], [:label, :species]] = ["aa", "bb"]
-      @fact crystal[:label] --> [:a, "aa", "bb"]
-      @fact crystal[:species] --> ["Al", "aa", "bb"]
+      @test crystal[:label] == [:a, "aa", "bb"]
+      @test crystal[:species] == ["Al", "aa", "bb"]
 
       crystal[1:2, [:label, :species]] = "A"
-      @fact crystal[:label] --> ["A", "A", "bb"]
-      @fact crystal[:species] --> ["A", "A", "bb"]
+      @test crystal[:label] == ["A", "A", "bb"]
+      @test crystal[:species] == ["A", "A", "bb"]
     end
-
   end
 end
 
-facts("Mutating functions") do
-  crystal = Crystal(eye(3), species=["Al", "O", "O"],
+@testset "> Mutating functions" begin
+  crystal = Crystal(eye(3)u"nm", species=["Al", "O", "O"],
                   position=transpose([1 1 1; 2 3 4; 4 5 2]),
                   label=[:+, :-, :0])
-  other = Crystal(eye(3), other=["H", "B", "C"],
+  other = Crystal(eye(3)u"nm", other=["H", "B", "C"],
                   position=transpose([2 1 2; 3 4 3; 5 2 5]),
                   label=[:a, :b, :c])
   df = DataFrame(A=1:3, B=6:8)
   original = deepcopy(crystal)
 
   merge!(crystal, other.atoms, df)
-  @fact names(crystal) --> [:species, :position, :label, :other, :A, :B]
-  @fact crystal[:species] --> ["Al", "O", "O"]
-  @fact crystal[:position] --> exactly(other[:position])
-  @fact crystal[:label] --> exactly(other[:label])
-  @fact crystal[:A] --> exactly(df[:A])
-  @fact crystal[:B] --> exactly(df[:B])
+  @test names(crystal) == [:species, :position, :label, :other, :A, :B]
+  @test crystal[:species] == ["Al", "O", "O"]
+  @test crystal[:position] === other[:position]
+  @test crystal[:label] === other[:label]
+  @test crystal[:A] === df[:A]
+  @test crystal[:B] === df[:B]
 
   delete!(crystal, [:A, :B])
-  @fact names(crystal) --> [:species, :position, :label, :other]
+  @test names(crystal) == [:species, :position, :label, :other]
 
   deleterows!(crystal, 3)
-  @fact crystal[:species] --> ["Al", "O"]
-  @fact crystal[:label] --> [:a, :b]
+  @test crystal[:species] == ["Al", "O"]
+  @test crystal[:label] == [:a, :b]
 end
 
-facts("Adding atoms") do
-  crystal = Crystal(eye(3), position=transpose([1 1 1; 2 3 4; 4 5 2]))
+@testset "> Adding atoms" begin
+  crystal = Crystal(eye(3)u"nm", position=transpose([1 1 1; 2 3 4; 4 5 2]))
   push!(crystal, ([1, 4, 2], ))
-  @fact size(crystal, 1) --> 4
-  @fact crystal[4, :position] --> [1, 4, 2]
+  @test size(crystal, 1) == 4
+  @test crystal[4, :position] == [1, 4, 2]
 
   # Add via tuple
-  crystal = Crystal(eye(3), species=["Al", "O", "O"],
+  crystal = Crystal(eye(3)u"nm", species=["Al", "O", "O"],
                   position=transpose([1 1 1; 2 3 4; 4 5 2]),
                   label=[:+, :-, :0])
   push!(crystal, ("B", [1, 4, 2], :aa))
-  @fact size(crystal, 1) --> 4
-  @fact crystal[4, :species] --> "B"
-  @fact crystal[4, :position] --> [1, 4, 2]
-  @fact crystal[4, :label] --> :aa
+  @test size(crystal, 1) == 4
+  @test crystal[4, :species] == "B"
+  @test crystal[4, :position] == [1, 4, 2]
+  @test crystal[4, :label] == :aa
 
   # Add only position, everything else NA
   push!(crystal, [5, 5, 3])
-  @fact size(crystal, 1) --> 5
-  @fact crystal[5, :species] --> exactly(NA)
-  @fact crystal[5, :position] --> [5, 5, 3]
-  @fact crystal[5, :label] --> exactly(NA)
+  @test size(crystal, 1) == 5
+  @test crystal[5, :species] === NA
+  @test crystal[5, :position] == [5, 5, 3]
+  @test crystal[5, :label] === NA
 
   # Add a new column
   push!(crystal, [6, 6, 2], special=:special, species="BaBa")
-  @fact size(crystal, 1) --> 6
-  @fact names(crystal) --> [:species, :position, :label, :special]
-  @fact crystal[6, :species] --> "BaBa"
-  @fact crystal[6, :position] --> [6, 6, 2]
+  @test size(crystal, 1) == 6
+  @test names(crystal) == [:species, :position, :label, :special]
+  @test crystal[6, :species] == "BaBa"
+  @test crystal[6, :position] == [6, 6, 2]
   for i in 1:5
-    @fact crystal[i, :special] --> exactly(NA)
+    @test crystal[i, :special] === NA
   end
-  @fact crystal[6, :special] --> :special
-  @fact crystal[6, :label] --> exactly(NA)
+  @test crystal[6, :special] == :special
+  @test crystal[6, :label] === NA
 
   # add a row using a dataframe
   append!(crystal, crystal[end, :])
-  @fact size(crystal, 1) --> 7
-  @fact crystal[end, :position] --> crystal[end - 1, :position]
+  @test size(crystal, 1) == 7
+  @test crystal[end, :position] == crystal[end - 1, :position]
 
   # add row using iterator
   for row in eachrow(crystal)
       push!(crystal, row)
       break
   end
-  @fact size(crystal, 1) --> 8
-  @fact crystal[end, :position] --> crystal[1, :position]
-
+  @test size(crystal, 1) == 8
+  @test crystal[end, :position] == crystal[1, :position]
 end
