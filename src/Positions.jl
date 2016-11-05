@@ -3,6 +3,7 @@ export Position, PositionArray, PositionDataArray
 
 using Crystals: Log
 using Unitful: Units, Quantity
+import Unitful: ustrip
 using FixedSizeArrays: FixedVector, NTuple
 using DataFrames: isna, DataArray
 using AffineTransforms: AffineTransform
@@ -147,5 +148,7 @@ True if the positions is given in fractional coordinates.
 A position is in fractional coordinates if it is dimensionless
 """
 is_fractional(pos::Position) = !(eltype(position) <: Quantity)
+
+ustrip(p::Position) = Position((ustrip(u) for u in p)...)
 
 end

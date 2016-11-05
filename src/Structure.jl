@@ -222,10 +222,19 @@ function Base.showcompact(io::IO, pos::Position)
     result = string(pos)
     print(io, result[findfirst(result, '('):end])
 end
+function Base.showcompact{T, D, U}(io::IO, pos::Position{Quantity{T, D, U}})
+    result = string(ustrip(pos))
+    print(io, result[findfirst(result, '('):end], "(", unit(pos[1]), ")")
+end
 
 function DataFrames.ourshowcompact(io::IO, pos::Position)
     result = string(pos)
     print(io, result[findfirst(result, '(') + 1:end - 1])
+end
+function DataFrames.ourshowcompact{T, D, U}(
+        io::IO, pos::Position{Quantity{T, D, U}})
+    result = string(ustrip(pos))
+    print(io, result[findfirst(result, '(') + 1:end - 1], " ", unit(pos[1]))
 end
 
 DataFrames.nrow(crystal::Crystal) = nrow(crystal.atoms)
