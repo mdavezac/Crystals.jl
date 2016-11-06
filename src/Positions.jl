@@ -63,7 +63,8 @@ Base.convert{T <: Number}(::Type{PositionDataArray{T}}, x::Vector) =
 function *{T <: Position}(matrix::Matrix, vectors::Array{T, 1})
     size(matrix, 1) == length(eltype(vectors)) ||
         Log.error("Inconsistent sizes")
-    result = similar(vectors)
+    const ET = eltype(Base.promote_op(*, typeof(matrix), eltype(vectors)))
+    result = Array{Position{ET, length(T)}, 1}(length(vectors))
     for i in 1:length(vectors)
         result[i] = matrix * vectors[i]
     end
@@ -73,7 +74,8 @@ end
 function *{T <: Position}(matrix::Matrix, vectors::DataArray{T, 1})
     size(matrix, 1) == length(eltype(vectors)) ||
     Log.error("Inconsistent sizes")
-    result = similar(vectors)
+    const ET = eltype(Base.promote_op(*, typeof(matrix), eltype(vectors)))
+    result = DataArray{Position{ET, length(T)}, 1}(length(vectors))
     for i in 1:length(vectors)
         if !isna(vectors, i)
             result[i] = matrix * vectors[i]
@@ -118,6 +120,7 @@ for (dotop, op) in ((:.+, :+), (:.-, :-))
             Position{TT, NN}[$op(v, t) for v in p]
         end
         function $dotop{T <: Number, N}(p::PositionArray{T, N}, t::Vector)
+            println("? ", eltype(p), " ", eltype(eltype(p)), " ", eltype(t))
             const TT = promote_type(eltype(eltype(p)), eltype(t))
             $dotop(p, Position{TT}(t))
         end

@@ -1,6 +1,7 @@
 module Utilities
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
-       supercell, cell_parameters, cell_parameters°
+       supercell, cell_parameters, cell_parameters°, underlying_dimension,
+       to_fractional
 
 using Crystals.Constants: default_tolerance
 using Crystals.Structure: Crystal
@@ -8,6 +9,35 @@ using Crystals.Positions: Position, PositionArray, PositionDataArray
 using Crystals.SNF: smith_normal_form
 using Crystals: Log
 using DataFrames: nrow, DataArray
+using Unitful: Quantity
+import Unitful: dimension, Dimensions
+
+"""
+    underlying_dimension(u::Any)
+
+Dimension of the input, if it has one. Arrays have a dimension if their element
+type has a uniform dimension.
+"""
+underlying_dimension{T <: AbstractArray}(u::Type{T}) =
+    underlying_dimension(eltype(T))
+underlying_dimension{T <: Position}(u::Type{T}) =
+    underlying_dimension(eltype(T))
+underlying_dimension{T, D, U}(::Type{Quantity{T, D, U}}) = D
+underlying_dimension{T <: Number}(::Type{T}) = Dimensions{()}
+underlying_dimension(u::DataType) = Dimensions{()}
+underlying_dimension(u::Any) = underlying_dimension(typeof(u))
+
+"""
+    is_position_array(x::Union{Position, AbstractArray})
+
+True if the input collapses to an array of positions, rather than just
+positions. This function is necessary, since it can be difficult to distinguish
+between a `Vector`, a `Position`, a `Matrix`, or an array of `Position`.
+"""
+is_position_array{T <: Position}(::Type{T}) = false
+is_position_array{T <: AbstractArray}(::Type{T}) =
+    ndims(T) == 2 || eltype(T) <: Position
+is_position_array(x::Any) = is_position_array(typeof(x))
 
 typealias PositionTypes Union{Position, Vector}
 
@@ -29,6 +59,22 @@ function hart_forcade(lattice::Matrix, supercell::Matrix; digits::Integer=8)
 end
 
 """
+     to_fractional{Q <: Quantity}(positions::Matrix, cell::Matrix{Q})
+
+Converts positions to fractional units. If the positions have no units, they are
+already fractional units, and this operation is a no-op.
+"""
+function to_fractional{Q <: Quantity}(
+                positions::Union{Position, AbstractArray}, cell::Matrix{Q})
+    if underlying_dimension(positions) !== Dimensions{()}
+        const result = inv(cell) * positions
+        @assert underlying_dimension(result) === Dimensions{()}
+        return result
+    end
+    positions;
+end
+
+"""
     is_periodic(a::Matrix, b::Matrix, cell::Matrix;
                 tolerance::Real=default_tolerance)
     is_periodic(a::Union{Position, Vector}, b::Union{Position, Vector},
@@ -38,21 +84,14 @@ True if the positions are one-to-one periodic with respect to the input cell.
 Returns a boolean if the input are two positions, and an array of booleans if
 the input are arrays of positions.
 """
-function is_periodic(a::Matrix, b::Matrix, cell::Matrix;
-                     tolerance::Real=default_tolerance)
-    is_periodic(a, b, cell, inv(cell); tolerance=tolerance)
-end
-function is_periodic(a::Matrix, b::Matrix, cell::Matrix, invcell::Matrix;
-                     tolerance::Real=default_tolerance)
-  all(abs(origin_centered(a - b, cell, invcell)) .< tolerance, 1)
-end
-function is_periodic(a::PositionTypes, b::PositionTypes, cell::Matrix;
-                     tolerance::Real=default_tolerance)
-    is_periodic(a, b, cell, inv(cell); tolerance=tolerance)
-end
-function is_periodic(a::PositionTypes, b::PositionTypes, cell::Matrix,
-                     invcell::Matrix; tolerance::Real=default_tolerance)
-    all(abs(origin_centered(a - b, cell, invcell)) .< tolerance)
+function is_periodic{Tc <: Quantity}(a::Union{Position, AbstractArray},
+                                     b::Union{Position, AbstractArray},
+                                     cell::Matrix{Tc};
+                                     tolerance::Real=default_tolerance)
+    const result = abs(
+        mod(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
+    ) .< tolerance
+    is_position_array(result) ? vec(all(result, 1)): all(result)
 end
 
 """
@@ -60,9 +99,9 @@ end
 
 Folds periodic positions into cell
 """
-function into_cell(pos::PositionTypes, cell::Matrix, invcell::Matrix;
-                   tolerance::Real=default_tolerance)
-    frac = mod(invcell * pos, 1)
+function into_cell{Tc <: Quantity}(pos::PositionTypes, cell::Matrix{Tc};
+                                   tolerance::Real=default_tolerance)
+    frac = mod(to_fractional(pos, cell), 1)
     if tolerance > 0
         for i in 1:length(frac)
             if abs(frac[i] - 1e0) < tolerance
@@ -80,7 +119,7 @@ end
 Folds column vector(s)/Position(s) back to origin
 """
 origin_centered(pos::PositionTypes, cell::Matrix, invcell::Matrix) =
-    cell * (mod(invcell * pos .+ 0.5, -1) .+ 0.5)
+    cell * (mod(to_fractional(pos, cell) .+ 0.5, -1) .+ 0.5)
 
 """
     into_voronoi(pos, cell::Matrix)
@@ -108,12 +147,8 @@ end
 
 for name in (:into_cell, :into_voronoi, :origin_centered)
     @eval begin
-        $name(pos::PositionTypes, cell::Matrix; kwargs...) =
-            $name(pos, cell, inv(cell); kwargs...)
-        $name(positions::Union{PositionArray, Matrix}, cell::Matrix; kwargs...)=
-            $name(positions, cell, inv(cell); kwargs...)
-        function $name(positions::Matrix, cell::Matrix, invcell::Matrix;
-            kwargs...)
+        function $name{Tc <: Quantity}(
+                        positions::AbstractArray, cell::Matrix{Tc}; kwargs...)
             result = similar(positions)
             for i = 1:size(positions, 2)
                 result[:, i] = $name(positions[:, i], cell, invcell; kwargs...)
@@ -181,7 +216,7 @@ function supercell(lattice::Crystal, supercell::Matrix;
         end
         push!(all_atoms, deepcopy(atoms))
     end
-    vcat(Crystal(eltype(lattice.cell), supercell, lattice.scale), all_atoms...)
+    vcat(Crystal(eltype(lattice.cell), supercell), all_atoms...)
 end
 
 """
@@ -219,10 +254,8 @@ end
     cell_parameters(cell::Crystal)
 
 Parameters [a, b, c, α, β, γ] of the input cell. `α`, `β`, `γ` are in radian.
-`a`, `b`, `c` include the scale factor `crystal.scale`.
 """
-cell_parameters(crystal::Crystal) =
-    cell_parameters(crystal.scale * crystal.cell)
+cell_parameters(crystal::Crystal) = cell_parameters(crystal.cell)
 
 """
     cell_parameters°(x::Matrix)

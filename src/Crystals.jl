@@ -24,15 +24,18 @@ properties:
                       label=[:+, :-, :-])
 """
 module Crystals
-export Position, PositionArray, PositionDataArray
+using Unitful: @u_str
+export @u_str
+
+export Position, PositionArray, PositionDataArray, is_fractional
 export Crystal, volume, round!
-export gruber, niggly
+# export gruber, niggly
 export smith_normal_form
 export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
        supercell, cell_parameters, cell_parameters°
-export point_group_operations, inner_translations, is_primitive, primitive,
-       space_group
-export Lattices
+# export point_group_operations, inner_translations, is_primitive, primitive,
+#        space_group
+# export Lattices
 
 include("Logging.h")
 
@@ -52,16 +55,16 @@ using .SNF
 include("utilities.jl")
 using .Utilities
 
-include("Gruber.jl")
-using .Gruber
-
-include("SpaceGroup.jl")
-using .SpaceGroup
-
-module Lattices
-  using Crystals.Crystal
-  include("Bravais.jl")
-  include("Binary.jl")
-  include("A2BX4.jl")
-end
+# include("Gruber.jl")
+# using .Gruber
+#
+# include("SpaceGroup.jl")
+# using .SpaceGroup
+#
+# module Lattices
+#   using Crystals.Crystal
+#   include("Bravais.jl")
+#   include("Binary.jl")
+#   include("A2BX4.jl")
+# end
 end # module
