@@ -27,12 +27,12 @@ module Crystals
 using Unitful: @u_str
 export @u_str
 
-export Position, PositionArray, PositionDataArray, is_fractional
-export Crystal, volume, round!
-# export gruber, niggly
-export smith_normal_form
-export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
-       supercell, cell_parameters, cell_parameters°
+# export Position, PositionArray, PositionDataArray, is_fractional
+export Crystal, is_fractional #, volume, round!
+# # export gruber, niggly
+# export smith_normal_form
+# export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
+#        supercell, cell_parameters, cell_parameters°
 # export point_group_operations, inner_translations, is_primitive, primitive,
 #        space_group
 # export Lattices
@@ -43,18 +43,18 @@ module Constants
   const default_tolerance = 1e-8
 end
 
-include("Positions.jl")
-using .Positions
-
+# include("Positions.jl")
+# using .Positions
+#
 include("Structure.jl")
 using .Structure
-
-include("SNF.jl")
-using .SNF
-
-include("utilities.jl")
-using .Utilities
-
+#
+# include("SNF.jl")
+# using .SNF
+#
+# include("utilities.jl")
+# using .Utilities
+#
 # include("Gruber.jl")
 # using .Gruber
 #
