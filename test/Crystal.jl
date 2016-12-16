@@ -51,35 +51,25 @@
             inv(fractional.cell) * [1, 1, 1]u"nm"
     end
 
-  # @testset ">> 3d with fractional" begin
-  #     crystal = Crystal(eye(3)u"nm", position=transpose([1 1 1; 2 3 4]))
-  #     @test nrow(crystal.atoms) == 2
-  #     @test names(crystal.atoms) == [:position]
-  #     @test crystal.atoms[1, :position] == [1, 1, 1]
-  #     @test crystal.atoms[2, :position][1] == 2
-  #     @test crystal.atoms[2, :position][2] == 3
-  #     @test crystal.atoms[2, :position][3] == 4
-  # end
-  #
-  # @testset ">> 2d with positions and species" begin
-  #   crystal = Crystal(
-  #       eye(2)u"nm", position=[1 1 1; 2 3 4]u"nm", species=["Al", "O", "O"])
-  #   @test nrow(crystal.atoms) == 3
-  #   @test names(crystal.atoms) == [:position, :species]
-  #
-  #   # Index of position column depends on input
-  #   crystal = Crystal(
-  #       eye(2)u"nm", species=["Al", "O", "O"], position=[1 1 1; 2 3 4]u"nm")
-  #   @test names(crystal.atoms) == [:species, :position]
-  # end
-  #
-  # @testset ">> 4d, constructing via arguments" begin
-  #   crystal = Crystal(eye(4)u"nm", Any[["Al", "O"], [1 1; 2 2; 3 3; 4 4]u"nm"],
-  #                     [:species, :position])
-  #   @test names(crystal.atoms) == [:species, :position]
-  #   @test nrow(crystal.atoms) == 2
-  #   @test eltype(crystal.atoms[:position]) === Position{eltype([1, 1]u"nm"), 4}
-  # end
+end
+
+@testset "> Pushing" begin
+    @testset "> simple line" begin
+        crystal = Crystal(Float64[0 1 1; 1 0 1; 1 1 0]u"nm")
+
+        push!(crystal, [0.25, 0.25, 0.25], species="Al")
+        @test length(crystal) == 1
+        @test all(crystal.positions[:, end] .== [0.5, 0.5, 0.5]u"nm")
+        @test Set(names(crystal.properties)) == Set([:species])
+        @test crystal.properties[:species] == ["Al"]
+
+        push!(crystal, [0.25, 0.25, 0.25]u"nm", species="α")
+        @test length(crystal) == 2
+        @test all(crystal.positions[:, end] .== [0.25, 0.25, 0.25]u"nm")
+        @test Set(names(crystal.properties)) == Set([:species])
+        @test nrow(crystal.properties) == 2
+        @test crystal.properties[end, :species] == "α"
+    end
 end
 
 # @testset "> Check direct indexing" begin

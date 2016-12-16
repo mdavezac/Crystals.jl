@@ -2,7 +2,7 @@ module Structure
 export AbstractCrystal, Crystal, RealCrystal, FractionalCrystal, is_fractional
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
-using DataFrames: DataFrame, nrow
+using DataFrames: DataFrame, nrow, NA, index
 using Crystals: Log
 import Base
 import Unitful
@@ -152,48 +152,33 @@ end
 function Base.push!(crystal::Crystal, position::Vector; kwargs...)
     length(position) ≠ size(crystal.cell, 1) &&
         Log.error("Dimensionality of input position and crystal do not match")
-    row = Any[NA for u in 1:length(crystal.atoms)]
-    row[index(crystal.atoms)[:position]] =
-        convert(eltype(crystal.atoms[:position]), position)
+    crystal.positions = hcat(crystal.positions,
+                             position_for_crystal(crystal, position))
+    row = Any[NA for u in 1:length(crystal.properties)]
 
     missing = Tuple{Symbol, Any}[]
-    const colnames = names(crystal)
+    const colnames = names(crystal.properties)
     for (name, value) in kwargs
         if name ∉ colnames
             push!(missing, (name, value))
         else
-            row[index(crystal.atoms)[name]] = value
+            row[index(crystal.properties)[name]] = value
         end
     end
-    push!(crystal, row)
+    if size(crystal.properties, 2) == 0 && length(missing) > 0
+        const name, value = pop!(missing)
+        crystal.properties[name] = [value]
+    else
+        push!(crystal.properties, row)
+    end
     for (name, value) in missing
         # given twice, makes no sense
-        @assert name ∉ names(crystal)
-        crystal[name] = fill(value, size(crystal, 1))
-        crystal[1:(size(crystal, 1) - 1), name] = NA
+        @assert name ∉ names(crystal.properties)
+        crystal.properties[name] = fill(value, size(crystal.properties, 1))
+        crystal.properties[1:(size(crystal.properties, 1) - 1), name] = NA
     end
 end
-#
-# function Base.push!(crystal::Crystal, row::DataFrameRow;
-#                     no_new_properties::Bool=false)
-#     push!(crystal, [NA for u in 1:ncol(crystal)])
-#     for (key, value) in row[intersect(names(row), names(crystal))]
-#         crystal[end, key] = value
-#     end
-#     no_new_properties && return
-#     for (key, value) in row[setdiff(names(row), names(crystal))]
-#         crystal[:, key] = value
-#         crystal[1:end - 1, key] = NA
-#     end
-# end
-#
-# function Base.push!{T <: Number}(
-#             crystal::Crystal, position::Vector{T}; kwargs...)
-#     pos = convert(Position{T}, position)
-#     Base.push!(crystal, pos; kwargs...)
-# end
 
-#
 # # Forwards all indexing to the DataFrame
 # """ Equivalent to `getindex(crystal.atoms, ...)` """
 # Base.getindex(crystal::Crystal, col::Any) = crystal.atoms[col]
