@@ -46,8 +46,8 @@ end
 # include("Positions.jl")
 # using .Positions
 #
-include("Structure.jl")
-using .Structure
+include("Structures.jl")
+using .Structures
 #
 # include("SNF.jl")
 # using .SNF

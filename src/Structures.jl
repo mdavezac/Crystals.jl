@@ -1,4 +1,4 @@
-module Structure
+module Structures
 export AbstractCrystal, Crystal, RealCrystal, FractionalCrystal, is_fractional
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 

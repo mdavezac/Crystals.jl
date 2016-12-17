@@ -39,7 +39,7 @@
     end
 
     @testset ">> Convert position to crystal's type" begin
-        position_for_crystal = Crystals.Structure.position_for_crystal
+        position_for_crystal = Crystals.Structures.position_for_crystal
         cell = [0 1 1; 1 0 1; 1 1 0]u"nm"
         real = Crystal(cell)
         @test !is_fractional(real)
