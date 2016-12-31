@@ -37,7 +37,7 @@ export Crystal, is_fractional #, volume, round!
 #        space_group
 # export Lattices
 
-include("Logging.h")
+include("Logging.jl")
 
 module Constants
   const default_tolerance = 1e-8
