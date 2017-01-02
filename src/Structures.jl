@@ -166,7 +166,7 @@ function Base.getindex{T <: Integer}(crystal::Crystal, range::AbstractVector{T})
     typeof(crystal)(crystal.cell, crystal.positions[:, range], crystal.properties[range, :])
 end
 
-Base.getindex(crystal::Crystal, ::Colon) = copy(crystal)
+Base.getindex(crystal::Crystal, ::Colon) = deepcopy(crystal)
 
 function Base.getindex(crystal::Crystal, symbols::AbstractVector{Symbol})
     if :position ∉ symbols
@@ -253,9 +253,44 @@ DataFrames.nrow(crystal::Crystal) = size(crystal.positions, 2)
 DataFrames.ncol(crystal::Crystal) = ncol(crystal.properties) + 1
 Base.endof(crystal::Crystal) = nrow(crystal)
 
+function Base.copy(crystal::Crystal)
+    typeof(crystal)(copy(crystal.cell), copy(crystal.positions), copy(crystal.properties))
+end
 
-# # Single column
-# Base.setindex!(crystal::Crystal, v::Crystal, col::Any) =
+function Base.deepcopy(crystal::Crystal)
+    typeof(crystal)(deepcopy(crystal.cell),
+                    deepcopy(crystal.positions),
+                    deepcopy(crystal.properties))
+end
+
+function Base.setindex!(crystal::Crystal, v::DataFrame, col::Symbol)
+    if :position ∈ names(v)
+        Log.error("Positions cannot be set from a dataframe")
+    end
+    setindex!(crystal.properties, v, col)
+end
+
+function Base.setindex!(crystal::Crystal, v::Any, row::Any, col::Symbol)
+    if col == :position
+        setindex!(crystal.positions, position_for_crystal(crystal, v), :, row)
+    else
+        setindex!(crystal.properties, v, row, col)
+    end
+end
+
+function Base.setindex!(crystal::Crystal, v::Any, col::Symbol)
+    if col == :position
+        if size(v) ≠ size(crystal.positions)
+            Log.error("Input has incorrect size")
+        end
+        crystal.positions = position_for_crystal(crystal, v)
+    else
+        setindex!(crystal.properties, v, col)
+    end
+end
+
+Base.setindex!(crys::Crystal, v::Any, ::Colon, col::Symbol) = Base.setindex!(crys, v, col)
+
 #     setindex!(crystal.atoms, v.atoms, col)
 # Base.setindex!(crystal::Crystal, v::Matrix, col::Any) =
 #     setindex!(crystal.atoms, convert(PositionDataArray, v), col)
@@ -276,11 +311,7 @@ Base.endof(crystal::Crystal) = nrow(crystal)
 #
 # Base.merge!(crystal::Crystal, others::DataFrame...) =
 #     (merge!(crystal.atoms, others...); crystal)
-# Base.copy!(crystal::Crystal) =
-#     Crystal{eltype(crystal.cell)}(copy(crystal.cell), copy(crystal.atoms))
-# Base.deepcopy(crystal::Crystal) =
-#     Crystal{eltype(crystal.cell)}(
-#         deepcopy(crystal.cell), deepcopy(crystal.atoms))
+
 #
 # Base.delete!(crystal::Crystal, cols::Any) =
 #     (delete!(crystal.atoms, cols); crystal)
