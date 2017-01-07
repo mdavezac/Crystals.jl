@@ -1,8 +1,8 @@
 module Structures
-export AbstractCrystal, Crystal, is_fractional
+export AbstractCrystal, Crystal, is_fractional, volume
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
-using DataFrames: DataFrame, nrow, NA, index
+using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
 using Crystals: Log
 import Base
 import Unitful
@@ -82,6 +82,13 @@ function fractional_trait{T <: Crystal}(::Type{T})
     is_fractional(T) ? Val{:fractional}(): Val{:real}()
 end
 
+volume(cell::Matrix) = abs(det(cell))
+function volume{T, D, U}(cell::Matrix{Quantity{T, D, U}})
+    abs(det(ustrip(cell))) * unit(eltype(cell))^3
+end
+volume(crystal::Crystal) = volume(crystal.cell)
+
+
 """
 position_for_crystal(crystal::Crystal, position::Array)
 
@@ -100,6 +107,9 @@ end
 position_for_crystal(::Val{:fractional}, cell::Matrix, position::Array) = position
 position_for_crystal(::Val{:real}, cell::Matrix, position::Array) = cell * position
 position_for_crystal{T <: Quantity}(::Val{:real}, cell::Matrix, pos::Array{T}) = pos
+
+@inline _is_not_position(s::Symbol) = :position ≠ s
+@inline _is_not_position(s::AbstractVector{Symbol}) = :position ∉ s
 
 function Base.show(io::IO, crystal::Crystal)
     println(io, "cell(", unit(crystal), "):")
@@ -263,11 +273,35 @@ function Base.deepcopy(crystal::Crystal)
                     deepcopy(crystal.properties))
 end
 
-function Base.setindex!(crystal::Crystal, v::DataFrame, col::Symbol)
-    if :position ∈ names(v)
+function Base.setindex!(crystal::Crystal, v::DataFrame, cols::AbstractVector{Symbol})
+    if :position ∈ names(v) || :position ∈ cols
         Log.error("Positions cannot be set from a dataframe")
     end
-    setindex!(crystal.properties, v, col)
+    setindex!(crystal.properties, v, cols)
+end
+
+function Base.setindex!(crystal::Crystal,
+                        v::DataFrame,
+                        rows::Any,
+                        cols::AbstractVector{Symbol})
+    if :position ∈ names(v) || :position ∈ cols
+        Log.error("Positions cannot be set from a dataframe")
+    end
+    setindex!(crystal.properties, v, rows, cols)
+end
+
+function Base.setindex!(crystal::Crystal, v::Crystal, cols::AbstractVector{Symbol})
+    if :position ∈ cols
+        # check lattices are equivalent
+        @assert isinteger(inv(crystal.cell) * v.cell)
+        @assert volume(crystal) ≈ volume(v)
+        real_position = position_for_crystal(Val{:real}(), v.cell, v.positions)
+        crystal.positions = position_for_crystal(crystal, real_position)
+        # forward to other properties
+        setindex!(crystal.properties, v.properties, filter(x -> x ≠ :position, cols))
+    else
+        setindex!(crystal.properties, v.properties, cols)
+    end
 end
 
 function Base.setindex!(crystal::Crystal, v::Any, row::Any, col::Symbol)
@@ -289,20 +323,50 @@ function Base.setindex!(crystal::Crystal, v::Any, col::Symbol)
     end
 end
 
+function Base.setindex!(crystal::Crystal, v::Crystal,
+                        row::Any, cols::AbstractVector{Symbol})
+    if :position ∈ cols
+        # check lattices are equivalent
+        @assert isinteger(inv(crystal.cell) * v.cell)
+        @assert volume(crystal) ≈ volume(v)
+        real_position = position_for_crystal(Val{:real}(), v.cell, v.positions)
+        crystal.positions[:, row] = position_for_crystal(crystal, real_position)
+        # forward to other properties
+        setindex!(crystal.properties, v.properties, row, filter(x -> x ≠ :position, cols))
+    else
+        setindex!(crystal.properties, v.properties, row, cols)
+    end
+end
+
 Base.setindex!(crys::Crystal, v::Any, ::Colon, col::Symbol) = Base.setindex!(crys, v, col)
 
-#     setindex!(crystal.atoms, v.atoms, col)
-# Base.setindex!(crystal::Crystal, v::Matrix, col::Any) =
-#     setindex!(crystal.atoms, convert(PositionDataArray, v), col)
-# Base.setindex!(crystal::Crystal, v::Any, col::Any) =
-#     setindex!(crystal.atoms, v, col)
-# Base.setindex!(crystal::Crystal, v::Crystal, row::Any, col::Any) =
-#     setindex!(crystal.atoms, v.atoms, row, col)
-# Base.setindex!(crystal::Crystal, v::Matrix, row::Any, col::Any) =
-#     setindex!(crystal.atoms, convert(PositionDataArray, v), row, col)
-# Base.setindex!(crystal::Crystal, v::Any, row::Any, col::Any) =
-#     setindex!(crystal.atoms, v, row, col)
-#
+function Base.delete!(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol}})
+    if !_is_not_position(col)
+        Log.error("Cannot delete position column from a structure")
+    end
+    delete!(crystal.properties, col)
+    crystal
+end
+
+Base.delete!(crystal::Crystal, ::Colon) = (empty!(crystal.properties); crystal)
+
+Base.setindex!(crystal::Crystal, ::Void, col::Any) = delete!(crystal, col)
+
+function Base.empty!(crystal::Crystal)
+    empty!(crystal.properties)
+    crystal.positions = crystal.positions[:, 1:0]
+end
+
+function DataFrames.deleterows!(crystal::Crystal, cols::Integer)
+    deleterows!(crystal.properties, cols)
+    crystal.positions = crystal.positions[:, [i for i in 1:nrows(crystal) if i ≠ col]]
+end
+
+function DataFrames.deleterows!{T <: Integer}(crystal::Crystal, cols::AbstractVector{T})
+    deleterows!(crystal.properties, cols)
+    crystal.positions = crystal.positions[:, [i for i in 1:nrows(crystal) if i ∉ col]]
+end
+
 # # Special deletion assignment
 # Base.setindex!(crystal::Crystal, x::Void, col::Int) = delete!(crystal, col)
 # Base.empty!(crystal::Crystal) = (empty!(crystal.atoms); crystal)
@@ -368,8 +432,7 @@ Base.setindex!(crys::Crystal, v::Any, ::Colon, col::Symbol) = Base.setindex!(cry
 # DataFrames.eachrow(crystal::Crystal) = eachrow(crystal.atoms)
 # DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
 #
-# volume(cell::Matrix) = abs(det(cell))
-# volume(crystal::Crystal) = volume(crystal.cell)
+
 #
 # """
 #     round!(crystal::Crystal, args...)

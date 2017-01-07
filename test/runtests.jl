@@ -1,6 +1,6 @@
 module CrystalTest
 using Crystals
-using DataFrames: nrow, DataFrame
+using DataFrames: nrow, DataFrame, ncol
 using Base.Test
 using Unitful: @u_str
 
