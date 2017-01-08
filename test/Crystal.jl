@@ -295,3 +295,32 @@ end
     end
 end
 
+@testset "> vcat and append" begin
+    first = Crystal([0 5 5; 5 0 5; 5 5 0]u"nm", species=["Al", "O", "O"],
+                    position=[1, 1, 1]u"nm",
+                    position=[1, 2, 1]u"nm",
+                    position=[0, 0, 1]u"nm",
+                    label=[:+, :-, :-])
+    second = Crystal([0 5 5; 5 0 5; 5 5 0]u"nm",
+                     position=[2, -1, 1]u"nm",
+                     position=[0, 0, -1]u"nm",
+                     label=[:-, :a])
+
+    crystal = vcat(first, second)
+    @test nrow(crystal) == 5
+    @test crystal.positions == transpose([1 1 1; 1 2 1; 0 0 1; 2 -1 1; 0 0 -1])u"nm"
+    @test crystal[1:3, :species] == ["Al", "O", "O"]
+    @test all(isna(crystal[4:5, :species]))
+    @test crystal[:label] == [:+, :-, :-, :-, :a]
+
+    crystal = deepcopy(first[[:position, :label]])
+    append!(crystal, second)
+    @test nrow(crystal) == 5
+    @test crystal.positions == transpose([1 1 1; 1 2 1; 0 0 1; 2 -1 1; 0 0 -1])u"nm"
+    @test crystal[:label] == [:+, :-, :-, :-, :a]
+
+    # mismatching columns
+    crystal = deepcopy(first)
+    @test_throws ErrorException append!(crystal, second)
+end
+

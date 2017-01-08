@@ -1,5 +1,5 @@
 module Structures
-export AbstractCrystal, Crystal, is_fractional, volume
+export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
 using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
@@ -90,9 +90,18 @@ function volume{T, D, U}(cell::Matrix{Quantity{T, D, U}})
 end
 volume(crystal::Crystal) = volume(crystal.cell)
 
+""" True if the lattices are mathematically equivalent """
+function are_compatible_lattices(a::Matrix, b::Matrix)
+    isinteger(inv(a) * b) && volume(a) ≈ volume(b)
+end
+are_compatible_lattices(a::Crystal, b::Matrix) = are_compatible_lattices(a.cell, b)
+are_compatible_lattices(a::Crystal, b::Crystal) = are_compatible_lattices(a.cell, b.cell)
+are_compatible_lattices(a::Matrix, b::Crystal) = are_compatible_lattices(a, b.cell)
+
 
 """
 position_for_crystal(crystal::Crystal, position::Array)
+position_for_crystal(crystal::Crystal, compatible_crystal::Crystal)
 
 Converts position to same type as in the input crystal. If real positions are
 given for a crystal with fractional positions, then the positions are converted.
@@ -109,6 +118,14 @@ end
 position_for_crystal(::Val{:fractional}, cell::Matrix, position::Array) = position
 position_for_crystal(::Val{:real}, cell::Matrix, position::Array) = cell * position
 position_for_crystal{T <: Quantity}(::Val{:real}, cell::Matrix, pos::Array{T}) = pos
+function position_for_crystal(v::Union{Val{:real}, Val{:fractional}}, crystal::Crystal)
+    position_for_crystal(v, crystal.cell, crystal.positions)
+end
+function position_for_crystal(crystal::Crystal, other::Crystal)
+    @assert are_compatible_lattices(crystal, other)
+    position_for_crystal(crystal, position_for_crystal(Val{:real}(), other))
+end
+
 
 @inline _is_not_position(s::Symbol) = :position ≠ s
 @inline _is_not_position(s::AbstractVector{Symbol}) = :position ∉ s
@@ -254,12 +271,7 @@ end
 
 function Base.setindex!(crystal::Crystal, v::Crystal, cols::AbstractVector{Symbol})
     if :position ∈ cols
-        # check lattices are equivalent
-        @assert isinteger(inv(crystal.cell) * v.cell)
-        @assert volume(crystal) ≈ volume(v)
-        real_position = position_for_crystal(Val{:real}(), v.cell, v.positions)
-        crystal.positions = position_for_crystal(crystal, real_position)
-        # forward to other properties
+        crystal.positions = position_for_crystal(crystal, v)
         setindex!(crystal.properties, v.properties, filter(x -> x ≠ :position, cols))
     else
         setindex!(crystal.properties, v.properties, cols)
@@ -288,12 +300,7 @@ end
 function Base.setindex!(crystal::Crystal, v::Crystal,
                         row::Any, cols::AbstractVector{Symbol})
     if :position ∈ cols
-        # check lattices are equivalent
-        @assert isinteger(inv(crystal.cell) * v.cell)
-        @assert volume(crystal) ≈ volume(v)
-        real_position = position_for_crystal(Val{:real}(), v.cell, v.positions)
-        crystal.positions[:, row] = position_for_crystal(crystal, real_position)
-        # forward to other properties
+        crystal.positions[:, row] = position_for_crystal(crystal, v)
         setindex!(crystal.properties, v.properties, row, filter(x -> x ≠ :position, cols))
     else
         setindex!(crystal.properties, v.properties, row, cols)
@@ -347,33 +354,26 @@ function DataFrames.deleterows!(crystal::Crystal, rows::RowIndices)
     crystal.positions = crystal.positions[:, prows]
 end
 
-# # Special deletion assignment
-# Base.setindex!(crystal::Crystal, x::Void, col::Int) = delete!(crystal, col)
-# Base.empty!(crystal::Crystal) = (empty!(crystal.atoms); crystal)
-# Base.insert!(crystal::Crystal, col::Int, item::AbstractVector, name::Symbol) =
-#     (insert!(crystal.atoms, col, item, name); crystal)
-#
-# Base.merge!(crystal::Crystal, others::DataFrame...) =
-#     (merge!(crystal.atoms, others...); crystal)
+"""
+`vcat(crys::Crystal, dfs::AbstractDataFrame...)`
 
-#
-# Base.delete!(crystal::Crystal, cols::Any) =
-#     (delete!(crystal.atoms, cols); crystal)
-# DataFrames.deleterows!(crystal::Crystal, cols::Any) =
-#     (deleterows!(crystal.atoms, cols); crystal)
-# DataFrames.hcat!(crystal::Crystal, x...) = (hcat!(crystal.atoms, x...); crystal)
-# Base.hcat(crystal::Crystal, x...) = hcat!(copy(crystal), x...)
-# Base.vcat(crystal::Crystal) = crystal
-# """
-# `vcat(crys::Crystal, dfs::AbstractDataFrame...)`
-#
-# Concatenates atoms into crystal
-# """
-# function Base.vcat(crys::Crystal, dfs::AbstractDataFrame...)
-#     result = Crystal(crys.cell)
-#     result.atoms = vcat(crys.atoms, dfs...)
-#     result
-# end
+Concatenates crystals together. The lattices must be compatible.
+"""
+function Base.vcat(crystal::Crystal, other::Vararg{Crystal})
+    typeof(crystal)(crystal.cell,
+                    hcat(crystal.positions,
+                         (position_for_crystal(crystal, u) for u in other)...),
+                    vcat(crystal.properties, (u.properties for u in other)...))
+end
+Base.vcat(crystal::Crystal) = crystal
+
+function Base.append!(crystal::Crystal, other::Vararg{Crystal})
+    crystal.positions = hcat(crystal.positions,
+                             (position_for_crystal(crystal, u) for u in other)...)
+    append!(crystal.properties, (u.properties for u in other)...)
+end
+
+
 # DataFrames.nullable!(crystal::Crystal, x...) =
 #     (nullable!(crystal.atoms, x...); crystal)
 # DataFrames.pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
