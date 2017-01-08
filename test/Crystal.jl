@@ -236,6 +236,18 @@ end
             @test crystal[[1, 3], :position] ≈ other.cell * other[[3, 1], :position]
             @test crystal[2, :position] ≈ original[2, :position]
         end
+
+        @testset ">>> Set position components" begin
+            crystal = deepcopy(original)
+            crystal[1, :position, 1] = 8u"nm"
+            @test crystal[1, :position, 1] ≈ 8u"nm"
+
+            crystal[2, :position, [3, 1]] = [7, 8]u"nm"
+            @test crystal[2, :position, [1, 3]] ≈ [8, 7]u"nm"
+
+            crystal[2, :position, [3, 1]] = [7, 8]u"nm"
+            @test crystal[2, :position, [1, 3]] ≈ [8, 7]u"nm"
+        end
     end
 end
 
@@ -266,6 +278,20 @@ end
         empty!(crystal)
         @test nrow(crystal) == 0
         @test ncol(crystal) == 1
+    end
+
+    @testset ">> rows" begin
+        crystal = deepcopy(original)
+        deleterows!(crystal, 1)
+        @test nrow(crystal) == nrow(original) - 1
+        @test crystal.properties == original.properties[2:end, :]
+        @test crystal.positions == original.positions[:, 2:end]
+
+        crystal = deepcopy(original)
+        deleterows!(crystal, 1:2:3)
+        @test nrow(crystal) == 1
+        @test crystal.properties == original.properties[2, :]
+        @test crystal.positions == original.positions[:, 2:2]
     end
 end
 

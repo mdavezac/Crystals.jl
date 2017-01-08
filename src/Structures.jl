@@ -12,6 +12,8 @@ using Unitful: dimension, unit
 """ Top type node for Crystals """
 abstract AbstractCrystal
 
+typealias RowIndices{T <: Integer} Union{T, AbstractVector{T}, Range{T}, Colon}
+
 """ Crystal that lies in a space with physical units """
 type Crystal{T <: Number, D, U, P <: Number} <: AbstractCrystal
     """ Periodicity of the crystal structure """
@@ -156,8 +158,8 @@ function Base.push!(crystal::Crystal, position::Vector; kwargs...)
     end
 end
 
-function Base.getindex(crystal::Crystal, index::Integer)
-    typeof(crystal)(crystal.cell, crystal.positions[:, index:index],
+function Base.getindex(crystal::Crystal, index::RowIndices)
+    typeof(crystal)(crystal.cell, hcat(crystal.positions[:, index]),
                     crystal.properties[index, :])
 end
 
@@ -166,14 +168,6 @@ function Base.getindex(crystal::Crystal, symbol::Symbol)
         return crystal.positions
     end
     crystal.properties[symbol]
-end
-
-function Base.getindex(crystal::Crystal, range::Range)
-    typeof(crystal)(crystal.cell, crystal.positions[:, range], crystal.properties[range, :])
-end
-
-function Base.getindex{T <: Integer}(crystal::Crystal, range::AbstractVector{T})
-    typeof(crystal)(crystal.cell, crystal.positions[:, range], crystal.properties[range, :])
 end
 
 Base.getindex(crystal::Crystal, ::Colon) = deepcopy(crystal)
@@ -186,7 +180,7 @@ function Base.getindex(crystal::Crystal, symbols::AbstractVector{Symbol})
     typeof(crystal)(crystal.cell, crystal.positions, crystal.properties[args])
 end
 
-function Base.getindex(crystal::Crystal, index::Union{Integer, Range}, symbol::Symbol)
+function Base.getindex(crystal::Crystal, index::RowIndices, symbol::Symbol)
     if symbol == :position
         return crystal.positions[:, index]
     end
@@ -203,46 +197,14 @@ end
 Base.getindex(crystal::Crystal, ::Colon, ::Colon) = copy(crystal)
 Base.getindex(crystal::Crystal, row::Any, col::Colon) = Base.getindex(crystal, row)
 
-function Base.getindex{T <: Integer}(crystal::Crystal,
-                                     index::AbstractVector{T}, symbol::Symbol)
-    if symbol == :position
-        return crystal.positions[:, index]
-    end
-    crystal.properties[index, symbol]
-end
-
-function Base.getindex(crystal::Crystal, index::Integer, symbols::AbstractVector{Symbol})
+function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVector{Symbol})
     if :position ∈ symbols
         args = filter(x -> x ≠ :position, symbols)
         return typeof(crystal)(crystal.cell,
-                               crystal.positions[:, index:index],
+                               hcat(crystal.positions[:, index]),
                                crystal.properties[index, args])
     end
     crystal.properties[index, symbols]
-end
-
-function Base.getindex{T <: Integer}(crystal::Crystal,
-                                     indices::AbstractVector{T},
-                                     symbols::AbstractVector{Symbol})
-    if :position ∈ symbols
-        args = filter(x -> x ≠ :position, symbols)
-        return typeof(crystal)(crystal.cell,
-                               crystal.positions[:, indices],
-                               crystal.properties[indices, args])
-    end
-    crystal.properties[indices, symbols]
-end
-
-function Base.getindex(crystal::Crystal,
-                       indices::Union{Range, Colon},
-                       symbols::AbstractVector{Symbol})
-    if :position ∈ symbols
-        args = filter(x -> x ≠ :position, symbols)
-        return typeof(crystal)(crystal.cell,
-                               crystal.positions[:, indices],
-                               crystal.properties[indices, args])
-    end
-    crystal.properties[indices, symbols]
 end
 
 function Base.getindex(crystal::Crystal, symbol::Symbol, pos::Any)
@@ -338,6 +300,22 @@ function Base.setindex!(crystal::Crystal, v::Crystal,
     end
 end
 
+function Base.setindex!(crystal::Crystal, v::Any, col::Symbol, xyz::RowIndices)
+    if col != :position
+        Log.error("crystal[:positions, integer] is only available for positions")
+    end
+
+    crystal.positions[xyz, :] = v
+end
+
+function Base.setindex!(crystal::Crystal, v::Any, rows::RowIndices,
+                        col::Symbol, xyz::RowIndices)
+    if col != :position
+        Log.error("crystal[:positions, integer] is only available for positions")
+    end
+    crystal.positions[xyz, rows] = v
+end
+
 Base.setindex!(crys::Crystal, v::Any, ::Colon, col::Symbol) = Base.setindex!(crys, v, col)
 
 function Base.delete!(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol}})
@@ -357,14 +335,16 @@ function Base.empty!(crystal::Crystal)
     crystal.positions = crystal.positions[:, 1:0]
 end
 
-function DataFrames.deleterows!(crystal::Crystal, cols::Integer)
-    deleterows!(crystal.properties, cols)
-    crystal.positions = crystal.positions[:, [i for i in 1:nrows(crystal) if i ≠ col]]
+function DataFrames.deleterows!(crystal::Crystal, row::Integer)
+    deleterows!(crystal.properties, row)
+    rows = filter(i -> i ≠ row, 1:nrow(crystal))
+    crystal.positions = crystal.positions[:, rows]
 end
 
-function DataFrames.deleterows!{T <: Integer}(crystal::Crystal, cols::AbstractVector{T})
-    deleterows!(crystal.properties, cols)
-    crystal.positions = crystal.positions[:, [i for i in 1:nrows(crystal) if i ∉ col]]
+function DataFrames.deleterows!(crystal::Crystal, rows::RowIndices)
+    deleterows!(crystal.properties, rows)
+    prows = filter(i -> i ∉ rows, 1:nrow(crystal))
+    crystal.positions = crystal.positions[:, prows]
 end
 
 # # Special deletion assignment
