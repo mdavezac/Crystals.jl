@@ -324,3 +324,12 @@ end
     @test_throws ErrorException append!(crystal, second)
 end
 
+@testset "> round crystal cell and positions" begin
+    crystal = Crystal([0 0.501 0.501; 0.496 0.001 0.497; 0.497 0.497 0]u"nm",
+                      position=[0.001, -0.001, -0.001]u"nm",
+                      position=[0.25, 0.251, -0.247]u"nm")
+    round!(crystal, 2)
+    @test crystal.cell == [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
+    @test crystal[:position] == transpose([0 0 0; 0.25 0.25 -0.25]u"nm")
+end
+

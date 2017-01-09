@@ -28,7 +28,7 @@ using Unitful: @u_str
 export @u_str
 
 # export Position, PositionArray, PositionDataArray, is_fractional
-export Crystal, is_fractional #, volume, round!
+export Crystal, is_fractional, volume, round!
 # # export gruber, niggly
 # export smith_normal_form
 # export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,

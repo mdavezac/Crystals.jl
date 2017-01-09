@@ -1,5 +1,5 @@
 module Structures
-export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices
+export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices, round!
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
 using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
@@ -373,63 +373,35 @@ function Base.append!(crystal::Crystal, other::Vararg{Crystal})
     append!(crystal.properties, (u.properties for u in other)...)
 end
 
-
-# DataFrames.nullable!(crystal::Crystal, x...) =
-#     (nullable!(crystal.atoms, x...); crystal)
-# DataFrames.pool!(crystal::Crystal, x::Any) = pool!(crystal.atoms, x::Any)
-# Base.append!(crystal::Crystal, atoms::DataFrame) =
-#     (append!(crystal.atoms, atoms); crystal)
-# Base.push!(crystal::Crystal, x::Any) = push!(crystal.atoms, x)
-#
-#
-# function Base.show(io::IO, crystal::Crystal, args...; kwargs...)
-#     println(io, typeof(crystal))
-#     println(io, "cell(", unit(crystal.cell[1]), "): ",
-#         ustrip(convert(Matrix{typeof(crystal.cell[1])}, crystal.cell)))
-#     println(io, crystal.atoms)
-# end
-#
-#
-# function Base.showcompact(io::IO, pos::Position)
-#     result = string(pos)
-#     print(io, result[findfirst(result, '('):end])
-# end
-# function Base.showcompact{T, D, U}(io::IO, pos::Position{Quantity{T, D, U}})
-#     result = string(ustrip(pos))
-#     print(io, result[findfirst(result, '('):end], "(", unit(pos[1]), ")")
-# end
-#
-# function DataFrames.ourshowcompact(io::IO, pos::Position)
-#     result = string(pos)
-#     print(io, result[findfirst(result, '(') + 1:end - 1])
-# end
-# function DataFrames.ourshowcompact{T, D, U}(
-#         io::IO, pos::Position{Quantity{T, D, U}})
-#     result = string(ustrip(pos))
-#     print(io, result[findfirst(result, '(') + 1:end - 1], " ", unit(pos[1]))
-# end
-#
 # DataFrames.eachrow(crystal::Crystal) = eachrow(crystal.atoms)
 # DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
 #
 
-#
-# """
-#     round!(crystal::Crystal, args...)
-#
-# Rounds the cell and position of a crystal. See `round` for possible parameters.
-# """
-# function round!(crystal::Crystal, args...)
-#     crystal.cell = round(crystal.cell, args...)
-#     crystal[:position] = round(convert(Array, crystal[:position]), args...)
-#     crystal
-# end
-#
-# """
-#     round(crystal::Crystal, args...)
-#
-# Rounds the cell and position of a crystal. See `round` for possible parameters.
-# """
-# Base.round(crystal::Crystal, args...) = round!(deepcopy(crystal), args...)
+
+"""
+round!(crystal::Crystal, args...)
+
+Rounds the cell and position of a crystal. See `round` for possible parameters.
+"""
+function round!{T, D, U, TT, DD, UU}(crystal::Crystal{T, D, U, Quantity{TT, DD, UU}},
+                                     args...)
+    crystal.cell = round(reinterpret(T, crystal.cell), args...) * unit(Quantity{T, D, U})
+    const punit = unit(Quantity{TT, DD, UU})
+    crystal[:position] = round(reinterpret(TT, crystal[:position]), args...) * punit
+    crystal
+end
+
+function round!{T, D, U, TT}(crystal::Crystal{T, D, U, TT}, args...)
+    crystal.cell = round(reinterpret(T, crystal.cell), args...) * unit(Quantity{T, D, U})
+    crystal[:position] = round(crystal[:position], args...)
+    crystal
+end
+
+"""
+round(crystal::Crystal, args...)
+
+Rounds the cell and position of a crystal. See `round` for possible parameters.
+"""
+Base.round(crystal::Crystal, args...) = round!(deepcopy(crystal), args...)
 
 end
