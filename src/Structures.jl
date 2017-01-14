@@ -9,7 +9,7 @@ import Unitful
 import DataFrames
 using Unitful: dimension, unit
 
-const RESERVED_COLUMNS = [:position, :fractional, :cartesian]
+const RESERVED_COLUMNS = [:position, :fractional, :cartesian, :x, :y, :z]
 
 """ Top type node for Crystals """
 abstract AbstractCrystal
@@ -191,6 +191,12 @@ function Base.getindex(crystal::Crystal, symbol::Symbol)
         return position_for_crystal(Val{:cartesian}(), crystal)
     elseif symbol == :fractional
         return position_for_crystal(Val{:fractional}(), crystal)
+    elseif symbol == :x
+        return crystal.positions[1, :]
+    elseif symbol == :y
+        return crystal.positions[2, :]
+    elseif symbol == :z
+        return crystal.positions[3, :]
     end
     crystal.properties[symbol]
 end
@@ -201,12 +207,20 @@ function Base.getindex(crystal::Crystal, symbols::AbstractVector{Symbol})
     const specials = symbols ∩ RESERVED_COLUMNS
     if length(specials) == 0
         return crystal.properties[symbols]
-    elseif length(specials) ≠ 1
-        Log.error("Cannot use more than one of $(RESERVED_COLUMNS) at a time")
+    elseif length(specials) > 1 && length(setdiff(specials, (:x, :y, :z))) == 0
+        args = filter(x -> x ∉ specials, symbols)
+        result = crystal.properties[args]
+        for u in specials
+            result[u] = crystal[u]
+        end
+        return result
+    elseif length(specials) > 1
+        allowed = setdiff(RESERVED_COLUMNS, (:x, :y, :z))
+        Log.error("Cannot use more than one of $allowed at a time")
     elseif specials[1] == :position
         args = filter(x -> x ≠ :position, symbols)
         typeof(crystal)(crystal.cell, crystal.positions, crystal.properties[args])
-    else
+    elseif specials[1] == :cartesian || specials[1] == :fractional
         const T, D, U = typeof(crystal).parameters[1:3]
         const positions = position_for_crystal(Val{specials[1]}(), crystal)
         const args = filter(x -> x ≠ specials[1], symbols)
@@ -218,6 +232,12 @@ end
 function Base.getindex(crystal::Crystal, index::RowIndices, symbol::Symbol)
     if symbol == :position
         return crystal.positions[:, index]
+    elseif symbol == :x
+        return crystal.positions[1, index]
+    elseif symbol == :y
+        return crystal.positions[2, index]
+    elseif symbol == :z
+        return crystal.positions[3, index]
     elseif symbol == :cartesian
         return position_for_crystal(Val{:cartesian}(),
                                     crystal.cell,
@@ -233,6 +253,12 @@ end
 function Base.getindex(crystal::Crystal, ::Colon, symbol::Symbol)
     if symbol == :position
         return crystal.positions
+    elseif symbol == :x
+        return crystal.positions[1, :]
+    elseif symbol == :y
+        return crystal.positions[2, :]
+    elseif symbol == :z
+        return crystal.positions[3, :]
     elseif symbol == :cartesian
         return position_for_crystal(Val{:cartesian}(), crystal)
     elseif symbol == :fractional
@@ -248,8 +274,16 @@ function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVec
     const specials = symbols ∩ RESERVED_COLUMNS
     if length(specials) == 0
         return crystal.properties[index, symbols]
-    elseif length(specials) ≠ 1
-        Log.error("Cannot use more than one of $(RESERVED_COLUMNS) at a time")
+    elseif length(specials) > 1 && length(setdiff(specials, (:x, :y, :z))) == 0
+        args = filter(x -> x ∉ specials, symbols)
+        result = crystal.properties[index, args]
+        for u in specials
+            result[u] = crystal[index, u]
+        end
+        return result
+    elseif length(specials) > 1
+        allowed = setdiff(RESERVED_COLUMNS, (:x, :y, :z))
+        Log.error("Cannot use more than one of $allowed at a time")
     elseif specials[1] == :position
         args = filter(x -> x ≠ :position, symbols)
         typeof(crystal)(crystal.cell,

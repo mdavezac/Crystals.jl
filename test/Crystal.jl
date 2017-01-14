@@ -84,6 +84,8 @@ end
 
         @testset ">>> symbol" begin
             @test crystal[:position] === crystal.positions
+            @test crystal[:x] == crystal.positions[1, :]
+            @test crystal[:y] == crystal.positions[2, :]
             @test crystal[:fractional] === crystal.positions
             @test crystal[:cartesian] == crystal.cell * crystal.positions
             @test crystal[:species] === crystal.properties[:species]
@@ -115,6 +117,9 @@ end
             @test cartesian[:species] == crystal.properties[:species]
             @test cartesian[:position] == crystal.cell * crystal.positions
 
+            @test crystal[[:species, :y, :x]][:x] == crystal.positions[1, :]
+            @test crystal[[:species, :y, :x]][:y] == crystal.positions[2, :]
+
             fractional = crystal[[:species, :fractional]]
             @test is_fractional(fractional)
             @test fractional[:species] == crystal.properties[:species]
@@ -128,6 +133,8 @@ end
             @test crystal[2:3, :species] == crystal.properties[2:3, :species]
             @test crystal[[3, 2], :position] == crystal.positions[:, [3, 2]]
             @test crystal[[3, 2], :species] == crystal.properties[[3, 2], :species]
+            @test crystal[[3, 2], :x] == crystal.positions[1, [3, 2]]
+            @test crystal[[3, 2], :x] == crystal.positions[1, [3, 2]]
             @test crystal[:, :species] === crystal.properties[:, :species]
             @test crystal[:, :position] === crystal.positions
             @test crystal[:, :fractional] === crystal.positions
@@ -140,6 +147,8 @@ end
             @test nrow(crystal[2, [:position, :label]]) == 1
             @test crystal[2, [:position, :label]][:position] == crystal.positions[:, 2:2]
             @test crystal[2, [:position, :label]][:label] == [crystal.properties[2, :label]]
+            @test crystal[2, [:x, :y, :label]][:x] == [crystal.positions[1, 2]]
+            @test crystal[2, [:x, :y, :label]][:y] == [crystal.positions[2, 2]]
 
             @test typeof(crystal[2, [:species, :label]]) === typeof(crystal.properties)
             @test crystal[2, [:species, :label]][:label] == [crystal.properties[2, :label]]
