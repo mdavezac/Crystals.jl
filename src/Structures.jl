@@ -9,6 +9,8 @@ import Unitful
 import DataFrames
 using Unitful: dimension, unit
 
+const RESERVED_COLUMNS = [:position, :fractional, :cartesian]
+
 """ Top type node for Crystals """
 abstract AbstractCrystal
 
@@ -34,6 +36,10 @@ function Crystal{C, D, U, P <: Number}(cell::Matrix{Quantity{C, D, U}},
     end
 
     properties = DataFrame(args...; kwargs...)
+
+    if length(names(properties) ∩ RESERVED_COLUMNS) > 0
+        Log.error("The following column names are reserved: $(RESERVED_COLUMNS)")
+    end
 
     if nrow(properties) != 0 && nrow(properties) != size(positions, 2)
         Log.error("atomic properties and positions have different lengths")
@@ -81,7 +87,7 @@ is_fractional(crystal::Crystal) = is_fractional(typeof(crystal))
 is_fractional{T <: Crystal}(::Type{T}) = !(T.parameters[end] <: Quantity)
 fractional_trait(crystal::Crystal) = fractional_trait(typeof(crystal))
 function fractional_trait{T <: Crystal}(::Type{T})
-    is_fractional(T) ? Val{:fractional}(): Val{:real}()
+    is_fractional(T) ? Val{:fractional}(): Val{:cartesian}()
 end
 
 volume(cell::Matrix) = abs(det(cell))
@@ -116,14 +122,12 @@ function position_for_crystal{T <: Quantity}(::Val{:fractional},
     inv(cell) * position
 end
 position_for_crystal(::Val{:fractional}, cell::Matrix, position::Array) = position
-position_for_crystal(::Val{:real}, cell::Matrix, position::Array) = cell * position
-position_for_crystal{T <: Quantity}(::Val{:real}, cell::Matrix, pos::Array{T}) = pos
-function position_for_crystal(v::Union{Val{:real}, Val{:fractional}}, crystal::Crystal)
-    position_for_crystal(v, crystal.cell, crystal.positions)
-end
+position_for_crystal(::Val{:cartesian}, cell::Matrix, position::Array) = cell * position
+position_for_crystal{T <: Quantity}(::Val{:cartesian}, cell::Matrix, pos::Array{T}) = pos
+position_for_crystal(a::Val, c::Crystal) = position_for_crystal(a, c.cell, c.positions)
 function position_for_crystal(crystal::Crystal, other::Crystal)
     @assert are_compatible_lattices(crystal, other)
-    position_for_crystal(crystal, position_for_crystal(Val{:real}(), other))
+    position_for_crystal(crystal, position_for_crystal(Val{:cartesian}(), other))
 end
 
 
@@ -183,6 +187,10 @@ end
 function Base.getindex(crystal::Crystal, symbol::Symbol)
     if symbol == :position
         return crystal.positions
+    elseif symbol == :cartesian
+        return position_for_crystal(Val{:cartesian}(), crystal)
+    elseif symbol == :fractional
+        return position_for_crystal(Val{:fractional}(), crystal)
     end
     crystal.properties[symbol]
 end
@@ -190,16 +198,34 @@ end
 Base.getindex(crystal::Crystal, ::Colon) = deepcopy(crystal)
 
 function Base.getindex(crystal::Crystal, symbols::AbstractVector{Symbol})
-    if :position ∉ symbols
+    const specials = symbols ∩ RESERVED_COLUMNS
+    if length(specials) == 0
         return crystal.properties[symbols]
+    elseif length(specials) ≠ 1
+        Log.error("Cannot use more than one of $(RESERVED_COLUMNS) at a time")
+    elseif specials[1] == :position
+        args = filter(x -> x ≠ :position, symbols)
+        typeof(crystal)(crystal.cell, crystal.positions, crystal.properties[args])
+    else
+        const T, D, U = typeof(crystal).parameters[1:3]
+        const positions = position_for_crystal(Val{specials[1]}(), crystal)
+        const args = filter(x -> x ≠ specials[1], symbols)
+        const P = eltype(positions)
+        Crystal{T, D, U, P}(crystal.cell, positions, crystal.properties[args])
     end
-    args = filter(x -> x ≠ :position, symbols)
-    typeof(crystal)(crystal.cell, crystal.positions, crystal.properties[args])
 end
 
 function Base.getindex(crystal::Crystal, index::RowIndices, symbol::Symbol)
     if symbol == :position
         return crystal.positions[:, index]
+    elseif symbol == :cartesian
+        return position_for_crystal(Val{:cartesian}(),
+                                    crystal.cell,
+                                    crystal.positions[:, index])
+    elseif symbol == :fractional
+        return position_for_crystal(Val{:fractional}(),
+                                    crystal.cell,
+                                    crystal.positions[:, index])
     end
     crystal.properties[index, symbol]
 end
@@ -207,6 +233,10 @@ end
 function Base.getindex(crystal::Crystal, ::Colon, symbol::Symbol)
     if symbol == :position
         return crystal.positions
+    elseif symbol == :cartesian
+        return position_for_crystal(Val{:cartesian}(), crystal)
+    elseif symbol == :fractional
+        return position_for_crystal(Val{:fractional}(), crystal)
     end
     crystal.properties[:, symbol]
 end
@@ -215,13 +245,25 @@ Base.getindex(crystal::Crystal, ::Colon, ::Colon) = copy(crystal)
 Base.getindex(crystal::Crystal, row::Any, col::Colon) = Base.getindex(crystal, row)
 
 function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVector{Symbol})
-    if :position ∈ symbols
+    const specials = symbols ∩ RESERVED_COLUMNS
+    if length(specials) == 0
+        return crystal.properties[index, symbols]
+    elseif length(specials) ≠ 1
+        Log.error("Cannot use more than one of $(RESERVED_COLUMNS) at a time")
+    elseif specials[1] == :position
         args = filter(x -> x ≠ :position, symbols)
-        return typeof(crystal)(crystal.cell,
-                               hcat(crystal.positions[:, index]),
-                               crystal.properties[index, args])
+        typeof(crystal)(crystal.cell,
+                        hcat(crystal.positions[:, index]),
+                        crystal.properties[index, args])
+    else
+        const T, D, U = typeof(crystal).parameters[1:3]
+        const positions = position_for_crystal(Val{specials[1]}(),
+                                               crystal.cell,
+                                               crystal.positions[:, index])
+        const args = filter(x -> x ≠ specials[1], symbols)
+        const P = eltype(positions)
+        Crystal{T, D, U, P}(crystal.cell, hcat(positions), crystal.properties[index, args])
     end
-    crystal.properties[index, symbols]
 end
 
 function Base.getindex(crystal::Crystal, symbol::Symbol, pos::Any)

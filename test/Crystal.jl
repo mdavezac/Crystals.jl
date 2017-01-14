@@ -84,6 +84,8 @@ end
 
         @testset ">>> symbol" begin
             @test crystal[:position] === crystal.positions
+            @test crystal[:fractional] === crystal.positions
+            @test crystal[:cartesian] == crystal.cell * crystal.positions
             @test crystal[:species] === crystal.properties[:species]
         end
 
@@ -107,15 +109,29 @@ end
             @test typeof(crystal[[:species, :position]]) === typeof(crystal)
             @test names(crystal[[:species, :position]]) == [:species, :position]
             @test crystal[[:species, :position]][:species] == crystal.properties[:species]
+
+            cartesian = crystal[[:species, :cartesian]]
+            @test !is_fractional(cartesian)
+            @test cartesian[:species] == crystal.properties[:species]
+            @test cartesian[:position] == crystal.cell * crystal.positions
+
+            fractional = crystal[[:species, :fractional]]
+            @test is_fractional(fractional)
+            @test fractional[:species] == crystal.properties[:species]
+            @test fractional[:position] == crystal.positions
         end
 
         @testset ">>> integer|range|array of integers|Colon, symbol" begin
             @test crystal[2, :position] == crystal.positions[:, 2]
+            @test crystal[2, :fractional] == crystal.positions[:, 2]
+            @test crystal[2, :cartesian] == crystal.cell * crystal.positions[:, 2]
             @test crystal[2:3, :species] == crystal.properties[2:3, :species]
             @test crystal[[3, 2], :position] == crystal.positions[:, [3, 2]]
             @test crystal[[3, 2], :species] == crystal.properties[[3, 2], :species]
             @test crystal[:, :species] === crystal.properties[:, :species]
             @test crystal[:, :position] === crystal.positions
+            @test crystal[:, :fractional] === crystal.positions
+            @test crystal[:, :cartesian] == crystal.cell * crystal.positions
         end
 
         @testset ">>> integer|range|array of integers|Colon, list of symbol" begin
@@ -136,6 +152,14 @@ end
             @test subcrystal[:label] == crystal.properties[[3, 2], :label]
 
             @test typeof(crystal[[3, 2], [:species, :label]]) === typeof(crystal.properties)
+
+            subcrystal = crystal[[3, 2], [:fractional, :label]]
+            @test typeof(subcrystal) === typeof(crystal)
+            @test subcrystal[:position] == crystal.positions[:, [3, 2]]
+
+            subcrystal = crystal[[3, 2], [:cartesian, :label]]
+            @test !is_fractional(subcrystal)
+            @test subcrystal[:position] == crystal.cell * crystal.positions[:, [3, 2]]
         end
 
         @testset ">>> position components" begin
