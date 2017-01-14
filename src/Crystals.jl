@@ -29,6 +29,7 @@ export @u_str
 
 # export Position, PositionArray, PositionDataArray, is_fractional
 export Crystal, is_fractional, volume, round!
+export eachatom
 # # export gruber, niggly
 # export smith_normal_form
 # export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
@@ -45,10 +46,13 @@ end
 
 # include("Positions.jl")
 # using .Positions
-#
+
 include("Structures.jl")
 using .Structures
-#
+
+include("CrystalAtoms.jl")
+using .CrystalAtoms
+
 # include("SNF.jl")
 # using .SNF
 #

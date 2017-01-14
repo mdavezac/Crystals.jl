@@ -15,6 +15,9 @@ is_subtype(x::Type) = y -> (y <: x)
 @testset "Crystal" begin
     include("Crystal.jl")
 end
+@testset "Atoms and iteration" begin
+    include("CrystalAtoms.jl")
+end
 # @testset "SNF" begin
 #     include("SNF.jl")
 # end

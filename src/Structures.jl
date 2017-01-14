@@ -373,10 +373,6 @@ function Base.append!(crystal::Crystal, other::Vararg{Crystal})
     append!(crystal.properties, (u.properties for u in other)...)
 end
 
-# DataFrames.eachrow(crystal::Crystal) = eachrow(crystal.atoms)
-# DataFrames.eachcol(crystal::Crystal) = eachcol(crystal.atoms)
-#
-
 
 """
 round!(crystal::Crystal, args...)
@@ -403,5 +399,7 @@ round(crystal::Crystal, args...)
 Rounds the cell and position of a crystal. See `round` for possible parameters.
 """
 Base.round(crystal::Crystal, args...) = round!(deepcopy(crystal), args...)
+
+Base.eachindex(crystal::Crystal) = 1:nrow(crystal)
 
 end
