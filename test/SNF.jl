@@ -136,4 +136,15 @@
       @test all(diag(smith) .≥ 0)
     end
   end
+
+  @testset ">> Units" begin
+      matrix = BigInt[1 2; -4 5]
+      usmith, uleft, uright = Crystals.SNF.smith_normal_form(matrix * u"nm")
+      smith, left, right = Crystals.SNF.smith_normal_form(matrix)
+      @test  uleft == left
+      @test  uright == right
+      @test eltype(usmith) == eltype(matrix * u"nm")
+      usmith = reshape([ustrip(u) for u in usmith], size(usmith))
+      @test usmith == smith
+  end
 end

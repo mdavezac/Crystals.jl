@@ -1,4 +1,5 @@
 module SNF
+using Unitful
 export smith_normal_form
 
 function choose_pivot!{T <: Integer}(left::Matrix{T}, smith::Matrix{T},
@@ -127,6 +128,18 @@ function smith_normal_form{T <: Integer}(matrix::Matrix{T})
   left = convert(Matrix{T}, diagm([u ≥ 0 ? 1: -1 for u in diag(smith)])) * left
   smith = abs(smith)
   smith, left, right
+end
+
+function smith_normal_form{I <: Integer, U, D}(matrix::Matrix{Quantity{I, D, U}})
+    s, l, r = smith_normal_form(ustrip(matrix))
+    s * unit(Quantity{I, U, D}), l, r
+end
+
+function smith_normal_form{D, U}(matrix::Matrix{Quantity{BigInt, D, U}})
+    m = reshape([ustrip(u) for u in matrix], size(matrix))
+    s, l, r = smith_normal_form(m)
+    s2 = reshape([Quantity{BigInt, D, U}(u) for u in s], size(s))
+    s2, l, r
 end
 
 end

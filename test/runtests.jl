@@ -2,7 +2,7 @@ module CrystalTest
 using Crystals
 using DataFrames: nrow, DataFrame, ncol, deleterows!, @data, NA, isna
 using Base.Test
-using Unitful: @u_str
+using Unitful: @u_str, unit, ustrip
 
 contains(x) = y -> x ∈ y
 all_integers(x::Array, ε::AbstractFloat=1e-8) = all(abs(x - round(Integer, x)) .< ε)
@@ -18,9 +18,9 @@ end
 @testset "Atoms and iteration" begin
     include("CrystalAtoms.jl")
 end
-# @testset "SNF" begin
-#     include("SNF.jl")
-# end
+@testset "SNF" begin
+    include("SNF.jl")
+end
 # @testset "Utilities" begin
 #     include("utilities.jl")
 # end

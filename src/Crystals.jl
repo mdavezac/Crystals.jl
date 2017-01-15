@@ -53,9 +53,9 @@ using .Structures
 include("CrystalAtoms.jl")
 using .CrystalAtoms
 
-# include("SNF.jl")
-# using .SNF
-#
+include("SNF.jl")
+using .SNF
+
 # include("utilities.jl")
 # using .Utilities
 #
