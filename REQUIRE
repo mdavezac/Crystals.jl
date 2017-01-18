@@ -4,3 +4,4 @@ FixedSizeArrays
 DataFrames
 AffineTransforms
 Lumberjack
+NamedTuples

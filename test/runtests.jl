@@ -21,9 +21,9 @@ end
 @testset "SNF" begin
     include("SNF.jl")
 end
-# @testset "Utilities" begin
-#     include("utilities.jl")
-# end
+@testset "Utilities" begin
+    include("utilities.jl")
+end
 # @testset "SpaceGroup" begin
 #     include("SpaceGroup.jl")
 # end
