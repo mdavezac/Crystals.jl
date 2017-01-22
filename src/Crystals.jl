@@ -32,7 +32,8 @@ export Crystal, is_fractional, volume, round!
 export eachatom
 export smith_normal_form
 # export gruber, niggly
-export hart_forcade
+export hart_forcade, is_periodic, to_fractional, to_cartesian, into_cell, origin_centered
+export into_voronoi, supercell, cell_parameters
 # export hart_forcade, is_periodic, into_cell, origin_centered, into_voronoi,
 #        supercell, cell_parameters, cell_parameters°
 # export point_group_operations, inner_translations, is_primitive, primitive,
