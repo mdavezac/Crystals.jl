@@ -27,9 +27,9 @@ end
 # @testset "SpaceGroup" begin
 #     include("SpaceGroup.jl")
 # end
-# @testset "Gruber" begin
-#     include("Gruber.jl")
-# end
+@testset "Gruber" begin
+    include("Gruber.jl")
+end
 
 # exitstatus()
 end

@@ -3,8 +3,9 @@ export gruber, niggly
 
 using Crystals.Constants: default_tolerance
 using Crystals.Utilities: cell_parameters
-using Crystals.Structure: Crystal
+using Crystals.Structures: Crystal, volume
 using Crystals: Log
+using Unitful: unit, ustrip, Quantity
 const max_no_change = 2
 
 function no_opt_change_test(new, last)
@@ -124,15 +125,15 @@ the `niggly` algorithm.
 # Arguments
 * `cell::Matrix`: the input lattice cell-vectors. Cannot be singular.
 * `itermax::Integer`: maximum number of iterations before bailing out
-* `tolerance::Real`: tolerance parameter when comparing real numbers
+* `tolerance::Number`: tolerance parameter when comparing real numbers
 * `max_no_change::Integer`: Maximum number of times to go through algorithm
   without changes before bailing out
 """
-function gruber(cell::Matrix;
-                tolerance::Real=default_tolerance, itermax::Integer=50,
-                max_no_change::Integer=10)
+function gruber{T <: Number}(cell::Matrix{T};
+                             tolerance::Real=default_tolerance, itermax::Integer=50,
+                             max_no_change::Integer=10)
     size(cell, 1) == size(cell, 2) || Log.error("Matrix not rectangular")
-    abs(det(cell)) > tolerance || Log.error("Singular matrix");
+    volume(cell) > tolerance || Log.error("Singular matrix");
     if itermax ≤ 0
         itermax = typemax(itermax)
     end
@@ -140,13 +141,13 @@ function gruber(cell::Matrix;
         max_no_change = typemax(max_no_change)
     end
 
+    const ε = tolerance
     const metric = transpose(cell) * cell
     params = vcat(diag(metric), [2metric[2, 3], 2metric[1, 3], 2metric[1, 2]])
     rinv = eye(size(metric, 1))
     nochange, previous = 0, -params[1:3]
     iteration::Int = 0
     for iteration in 1:itermax
-        const ε = tolerance
         condition0 =
             (a, b, d, e) -> a ≥ b + ε || (abs(a - b) < ε && abs(d) ≥ abs(e) + ε)
 
@@ -155,11 +156,11 @@ function gruber(cell::Matrix;
         condition0(params[2], params[3], params[5], params[6]) &&
             (n2_action(params, rinv); continue)
 
-        if def_gt_0(params[4:end]...; tolerance=tolerance)
-            n3_action(params, rinv; tolerance=tolerance)
+        if def_gt_0(params[4:end]...; tolerance=ε)
+            n3_action(params, rinv; tolerance=ε)
         else
-            n4_action(params, rinv; tolerance=tolerance)
-            if all(abs(previous - params[1:3]) .< tolerance)
+            n4_action(params, rinv; tolerance=ε)
+            if all(abs(previous - params[1:3]) .< ε)
                 no_change += 1
             else
                 no_change = 0
@@ -172,11 +173,11 @@ function gruber(cell::Matrix;
             (abs(d - b) < ε && 2e ≤ f - ε) ||
             (abs(d + b) < ε && f ≤ -ε)
         condition1(params[4], params[2], params[5], params[6]) &&
-            (n5_action(params, rinv; tolerance=tolerance); continue)
+            (n5_action(params, rinv; tolerance=ε); continue)
         condition1(params[5], params[1], params[4], params[6]) &&
-        (n6_action(params, rinv; tolerance=tolerance); continue)
+        (n6_action(params, rinv; tolerance=ε); continue)
             condition1(params[6], params[1], params[4], params[5]) &&
-        (n7_action(params, rinv; tolerance=tolerance); continue)
+        (n7_action(params, rinv; tolerance=ε); continue)
 
         const sum_no_c = sum(params[1:2]) + sum(params[4:end])
         (
@@ -191,6 +192,15 @@ function gruber(cell::Matrix;
     cell * rinv
 end
 
+function gruber{T, D, U}(cell::Matrix{Quantity{T, D, U}};
+                tolerance::Real=default_tolerance, itermax::Integer=50,
+                max_no_change::Integer=10)
+    gruber(ustrip(cell);
+           tolerance=tolerance,
+           itermax=itermax,
+           max_no_change=max_no_change) * unit(Quantity{T, D, U})
+end
+
 """
     niggly(cell::Matrix; kwargs...)
 
@@ -198,7 +208,6 @@ Determines a unique cartesian cell equivalent to the input, with the shortest
 possible vectors and squarest angles. For an explanation of the parameters, see
 `gruber`.
 """
-niggly(cell::Matrix, kwargs...) =
-    cell_parameters(cell_parameters(gruber(cell; kwargs...))...)
+niggly(cell::Matrix, kwargs...) = cell_parameters(cell_parameters(gruber(cell; kwargs...)))
 
 end
