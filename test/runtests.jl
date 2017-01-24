@@ -24,9 +24,9 @@ end
 @testset "Utilities" begin
     include("utilities.jl")
 end
-# @testset "SpaceGroup" begin
-#     include("SpaceGroup.jl")
-# end
+@testset "SpaceGroup" begin
+    include("SpaceGroup.jl")
+end
 @testset "Gruber" begin
     include("Gruber.jl")
 end
