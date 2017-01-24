@@ -53,7 +53,7 @@ function n3_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
     const j = params[5] ≤ -tolerance ? -1 : 1
     const k = params[6] ≤ -tolerance ? -1 : 1
     rinv[:, :] = rinv * [i 0 0; 0 j 0; 0 0 k]
-  params[4:end] = abs(params[4:end])
+    params[4:end] = abs(params[4:end])
 end
 
 function n4_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
@@ -175,9 +175,9 @@ function gruber{T <: Number}(cell::Matrix{T};
         condition1(params[4], params[2], params[5], params[6]) &&
             (n5_action(params, rinv; tolerance=ε); continue)
         condition1(params[5], params[1], params[4], params[6]) &&
-        (n6_action(params, rinv; tolerance=ε); continue)
-            condition1(params[6], params[1], params[4], params[5]) &&
-        (n7_action(params, rinv; tolerance=ε); continue)
+            (n6_action(params, rinv; tolerance=ε); continue)
+        condition1(params[6], params[1], params[4], params[5]) &&
+            (n7_action(params, rinv; tolerance=ε); continue)
 
         const sum_no_c = sum(params[1:2]) + sum(params[4:end])
         (
@@ -193,8 +193,8 @@ function gruber{T <: Number}(cell::Matrix{T};
 end
 
 function gruber{T, D, U}(cell::Matrix{Quantity{T, D, U}};
-                tolerance::Real=default_tolerance, itermax::Integer=50,
-                max_no_change::Integer=10)
+                         tolerance::Real=default_tolerance, itermax::Integer=50,
+                         max_no_change::Integer=10)
     gruber(ustrip(cell);
            tolerance=tolerance,
            itermax=itermax,
