@@ -1,7 +1,6 @@
 """ b5 (spinel) lattice """
-b5(T::Type=Float64; scale=1) = Crystal(
-    T[0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0],
-    scale,
+b5(T::Type=Float64; unit=u"nm") = Crystal(
+    T[0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0] * unit,
     tposition=T[0.5 0.5 0.5;
                 0.5 0.25 0.25;
                 0.25 0.5 0.25;
@@ -15,7 +14,6 @@ b5(T::Type=Float64; scale=1) = Crystal(
                 0.75 0.75 0.75;
                 0.75 0.5 0.5;
                 0.5 0.75 0.5;
-                0.5 0.5 0.75],
-    species=[
-        'A', 'A', 'A', 'A', 'B', 'B', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+                0.5 0.5 0.75] * unit,
+    species=['A', 'A', 'A', 'A', 'B', 'B', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
 )

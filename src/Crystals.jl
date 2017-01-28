@@ -37,7 +37,7 @@ export into_voronoi, supercell, cell_parameters
 export point_group_operations, inner_translations
 # , is_primitive, primitive,
 #        space_group
-# export Lattices
+export Lattices
 
 include("Logging.jl")
 
@@ -66,10 +66,11 @@ using .Gruber
 include("SpaceGroup.jl")
 using .SpaceGroup
 
-# module Lattices
-#   using Crystals.Crystal
-#   include("Bravais.jl")
-#   include("Binary.jl")
-#   include("A2BX4.jl")
-# end
+module Lattices
+  using Crystals.Structures.Crystal
+  using Unitful: @u_str
+  include("Bravais.jl")
+  include("Binary.jl")
+  include("A2BX4.jl")
+end
 end # module
