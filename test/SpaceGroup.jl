@@ -50,23 +50,38 @@ end
     end
 end
 
-# @testset "> Inner translations" begin do
-#     diamond = Lattices.diamond()
-#     @testset ">> No translations" begin
-#         translations = inner_translations(diamond)
-#         @test length(translations) --> 0
-#     end
-#     @testset ">> Supercell" begin
-#         cell = -1
-#         while det(cell) ≤ 0
-#           cell = rand(-3:3, (3, 3))
-#         end
-#         large = supercell(diamond, diamond.cell * cell)
-#         @test nrow(large) --> round(Integer, det(cell)) * nrow(diamond)
-#         translations = inner_translations(large)
-#         @test length(translations) --> round(Integer, det(cell) - 1)
-#     end
-# end
+@testset "> Inner translations" begin
+    @testset ">> Implementation details" begin
+        a = DataFrame(species=["Al", "Al", "O", "O", "O"], momo=[1, 2, 3, 3, 1],
+                      mama=[:+, :+, :+, :-, :-])
+
+        species = Crystals.SpaceGroup.species_ids(a, [:species])
+        @test species[1] == species[2]
+        @test species[3] == species[4] == species[5]
+        @test species[1] ≠ species[3]
+
+        species = Crystals.SpaceGroup.species_ids(a, [:species, :momo])
+        @test length(Set(species[[1, 2, 3, 5]])) == 4
+        @test species[3] == species[4]
+    end
+
+    diamond = Lattices.diamond()
+    diamond[:species] = ["A", "A"]
+    @testset ">> No translations" begin
+        translations = Crystals.SpaceGroup.inner_translations(diamond)
+        @test length(translations) == 0
+    end
+    @testset ">> Supercell" begin
+        cell = -1
+        while det(cell) ≤ 0
+          cell = rand(-3:3, (3, 3))
+        end
+        large = supercell(diamond, diamond.cell * cell)
+        @test nrow(large) == round(Integer, det(cell)) * nrow(diamond)
+        translations = Crystals.SpaceGroup.inner_translations(large)
+        @test length(translations) == round(Integer, det(cell) - 1)
+    end
+end
 
 # @testset "> Make primitive" begin do
 #     zinc_blende = Lattices.zinc_blende()

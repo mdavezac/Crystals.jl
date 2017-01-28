@@ -108,7 +108,7 @@ end
 
 """
     is_periodic(a::AbstractVector, b::AbstractVector, cell::AbstractMatrix;
-                tolerance::Real=default_tolerance)
+                tolerance::Real=$(default_tolerance))
 
 True if the positions are one-to-one periodic with respect to the input cell.
 """
@@ -122,7 +122,7 @@ end
 
 """
     is_periodic(a::AbstractMatrix, b::AbstractVector, cell::AbstractMatrix;
-                tolerance::Real=default_tolerance)
+                tolerance::Real=$(default_tolerance))
 
 Array of boolean describing whether positions in `a` are periodic with positions in `b`.
 """
