@@ -106,24 +106,28 @@ are_compatible_lattices(a::Matrix, b::Crystal) = are_compatible_lattices(a, b.ce
 
 
 """
-position_for_crystal(crystal::Crystal, position::Array)
-position_for_crystal(crystal::Crystal, compatible_crystal::Crystal)
+    position_for_crystal(crystal::Crystal, position::AbstractArray)
+    position_for_crystal(crystal::Crystal, compatible_crystal::Crystal)
 
 Converts position to same type as in the input crystal. If real positions are
 given for a crystal with fractional positions, then the positions are converted.
 And vice-versa.
 """
-function position_for_crystal(crystal::Crystal, position::Array)
+function position_for_crystal(crystal::Crystal, position::AbstractArray)
     position_for_crystal(fractional_trait(crystal), crystal.cell, position)
 end
 function position_for_crystal{T <: Quantity}(::Val{:fractional},
-                                             cell::Matrix,
-                                             position::Array{T})
+                                             cell::AbstractMatrix,
+                                             position::AbstractArray{T})
     inv(cell) * position
 end
-position_for_crystal(::Val{:fractional}, cell::Matrix, position::Array) = position
-position_for_crystal(::Val{:cartesian}, cell::Matrix, position::Array) = cell * position
-position_for_crystal{T <: Quantity}(::Val{:cartesian}, cell::Matrix, pos::Array{T}) = pos
+position_for_crystal(::Val{:fractional}, ::AbstractMatrix, pos::AbstractArray) = pos
+position_for_crystal(::Val{:cartesian}, cell::AbstractMatrix, p::AbstractArray) = cell * p
+function position_for_crystal{T <: Quantity}(::Val{:cartesian},
+                                             cell::AbstractMatrix,
+                                             positions::AbstractArray{T})
+    positions
+end
 position_for_crystal(a::Val, c::Crystal) = position_for_crystal(a, c.cell, c.positions)
 function position_for_crystal(crystal::Crystal, other::Crystal)
     @assert are_compatible_lattices(crystal, other)

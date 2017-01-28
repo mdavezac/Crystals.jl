@@ -30,7 +30,7 @@ is_unitful{T, D, U}(a::Type{Quantity{T, D, U}}) = Val{:unitful}()
 typealias HartForcadeResult @NT(transform::Matrix, quotient::Vector)
 
 """
-    hart_forcade(lattice::Matrix, supercell::Matrix; digits::Integer=8)
+    hart_forcade(lattice::AbstractMatrix, supercell::AbstractMatrix; digits::Integer=8)
 
 Computes the cyclic group of a supercell with respect to a lattice. It makes it
 possible to identify the class of periodically equivalent cell that a given
@@ -38,7 +38,7 @@ position within the supercell belongs to.
 
 Returns the transform and the quotient.
 """
-function hart_forcade(lattice::Matrix, supercell::Matrix; digits::Integer=8)
+function hart_forcade(lattice::AbstractMatrix, supercell::AbstractMatrix; digits::Integer=8)
     fractional = convert(Matrix{Int64}, round(inv(lattice) * supercell, digits))
 
     snf, left, right = smith_normal_form(fractional)
@@ -47,50 +47,72 @@ function hart_forcade(lattice::Matrix, supercell::Matrix; digits::Integer=8)
 end
 
 """
-     to_fractional(positions::AbstractArray, cell::Matrix)
+     to_fractional(positions::AbstractArray, cell::AbstractMatrix)
 
 Converts positions to fractional units (not Unitful). If the positions have no units, they
 are already fractional units, and this operation is a no-op.
 """
-to_fractional(pos::AbstractArray, cell::Matrix) = to_fractional(is_unitful(pos), pos, cell)
-to_fractional(::Val{:unitless}, positions::AbstractArray, ::Matrix) = positions
-to_fractional(::Val{:unitful}, p::AbstractArray, c::Matrix) = inv(c) * p
+function to_fractional(pos::AbstractArray, cell::AbstractMatrix)
+    to_fractional(is_unitful(pos), pos, cell)
+end
+to_fractional(::Val{:unitless}, positions::AbstractArray, ::AbstractMatrix) = positions
+function to_fractional(v::Val{:unitful}, positions::AbstractArray, cell::AbstractMatrix)
+    to_fractional(v, is_unitful(cell), positions, cell)
+end
+function to_fractional(::Val{:unitful}, ::Val{:unitless}, ::AbstractArray, ::AbstractMatrix)
+    Log.error("The cell is unitless. Cannot determine how to make positions fractional.")
+end
+function to_fractional(::Val{:unitful}, v::Val{:unitful},
+                       positions::AbstractArray, cell::AbstractMatrix)
+    inv(cell) * positions
+end
 
 """
-    to_cartesian(positions::AbstractArray, cell::Matrix)
+    to_cartesian(positions::AbstractArray, cell::AbstractMatrix)
 
 Converts positions to cartesian units (Unitful). If the positions have no units, they are
 already cartesian units, and this operation is a no-op.
 """
-to_cartesian(pos::AbstractArray, cell::Matrix) = to_cartesian(is_unitful(pos), pos, cell)
-to_cartesian(::Val{:unitful}, positions::AbstractArray, ::Matrix) = positions
-to_cartesian(::Val{:unitless}, positions::AbstractArray, cell::Matrix) = cell * positions
+function to_cartesian(pos::AbstractArray, cell::AbstractMatrix)
+    to_cartesian(is_unitful(pos), pos, cell)
+end
+to_cartesian(::Val{:unitful}, positions::AbstractArray, ::AbstractMatrix) = positions
+function to_cartesian(v::Val{:unitless}, positions::AbstractArray, cell::AbstractMatrix)
+    to_cartesian(v, is_unitful(cell), positions, cell)
+end
+function to_cartesian(::Val{:unitless}, ::Val{:unitless}, ::AbstractArray, ::AbstractMatrix)
+    Log.error("The cell is unitless. Cannot determine how to make positions cartesian.")
+end
+function to_cartesian(::Val{:unitless}, ::Val{:unitful},
+                      positions::AbstractArray, cell::AbstractMatrix)
+    cell * positions
+end
 
 
 """
-    to_same_kind(positions::AbstractArray, same::AbstractArray, cell::Matrix)
+    to_same_kind(positions::AbstractArray, same::AbstractArray, cell::AbstractMatrix)
 
 Converts positions to same units, cartesian or fractional, as `same`. If possible, it
 returns a reference to `positions` without copy. The function helps maintain _kind_
 stability in other utility functions.
 """
-function to_same_kind(positions::AbstractArray, same::AbstractArray, cell::Matrix)
+function to_same_kind(positions::AbstractArray, same::AbstractArray, cell::AbstractMatrix)
     to_same_kind(is_unitful(same), positions, cell)
 end
-function to_same_kind(::Val{:unitful}, positions::AbstractArray, cell::Matrix)
+function to_same_kind(::Val{:unitful}, positions::AbstractArray, cell::AbstractMatrix)
     to_cartesian(positions, cell)
 end
-function to_same_kind(::Val{:unitless}, positions::AbstractArray, cell::Matrix)
+function to_same_kind(::Val{:unitless}, positions::AbstractArray, cell::AbstractMatrix)
     to_fractional(positions, cell)
 end
 
 """
-    is_periodic(a::AbstractVector, b::AbstractVector, cell::Matrix;
+    is_periodic(a::AbstractVector, b::AbstractVector, cell::AbstractMatrix;
                 tolerance::Real=default_tolerance)
 
 True if the positions are one-to-one periodic with respect to the input cell.
 """
-function is_periodic(a::AbstractVector, b::AbstractVector, cell::Matrix;
+function is_periodic(a::AbstractVector, b::AbstractVector, cell::AbstractMatrix;
                      tolerance::Real=default_tolerance)
     const result = abs(
         mod(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
@@ -99,14 +121,14 @@ function is_periodic(a::AbstractVector, b::AbstractVector, cell::Matrix;
 end
 
 """
-    is_periodic(a::AbstractMatrix, b::AbstractVector, cell::Matrix;
+    is_periodic(a::AbstractMatrix, b::AbstractVector, cell::AbstractMatrix;
                 tolerance::Real=default_tolerance)
 
 Array of boolean describing whether positions in `a` are periodic with positions in `b`.
 """
 function is_periodic{T, D, U}(a::AbstractMatrix,
                               b::AbstractVector,
-                              cell::Matrix{Quantity{T, D, U}};
+                              cell::AbstractMatrix{Quantity{T, D, U}};
                               tolerance::Real=default_tolerance)
     const result = abs(
         mod(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
@@ -115,13 +137,13 @@ function is_periodic{T, D, U}(a::AbstractMatrix,
 end
 function is_periodic{T, D, U}(a::AbstractVector,
                               b::AbstractMatrix,
-                              cell::Matrix{Quantity{T, D, U}};
+                              cell::AbstractMatrix{Quantity{T, D, U}};
                               tolerance::Real=default_tolerance)
     is_periodic(b, a, cell, tolerance=tolerance)
 end
 function is_periodic{T, D, U}(a::AbstractMatrix,
                               b::AbstractMatrix,
-                              cell::Matrix{Quantity{T, D, U}};
+                              cell::AbstractMatrix{Quantity{T, D, U}};
                               tolerance::Real=default_tolerance)
     const result = abs(
         mod(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
@@ -130,11 +152,12 @@ function is_periodic{T, D, U}(a::AbstractMatrix,
 end
 
 """
-    into_cell(pos::Union{Vector, Position}, cell::Matrix)
+    into_cell(pos::Union{Vector, Position}, cell::AbstractMatrix)
 
 Folds periodic positions into cell
 """
-function into_cell(pos::AbstractArray, cell::Matrix; tolerance::Real=default_tolerance)
+function into_cell(pos::AbstractArray, cell::AbstractMatrix;
+                   tolerance::Real=default_tolerance)
     frac = mod(to_fractional(pos, cell), 1)
     if tolerance > 0
         for i in 1:length(frac)
@@ -148,16 +171,16 @@ end
 
 
 """
-    origin_centered(positions::AbstractArrays, cell::Matrix)
+    origin_centered(positions::AbstractArrays, cell::AbstractMatrix)
 
 Folds column vector(s)/Position(s) back to origin
 """
-function origin_centered(pos::AbstractArray, cell::Matrix)
+function origin_centered(pos::AbstractArray, cell::AbstractMatrix)
     to_same_kind(mod(to_fractional(pos, cell) .+ 0.5, -1) .+ 0.5, pos, cell)
 end
 
 """
-    into_voronoi(positions::AbstractArray, cell::Matrix; extent::Integer=1)
+    into_voronoi(positions::AbstractArray, cell::AbstractMatrix; extent::Integer=1)
 
 Folds column vector(s)/Position(s) into first Brillouin zone of the input cell.
 Makes a well-meaning effort at returning the periodic image with the smallest possible norm.
@@ -165,7 +188,7 @@ It recenter the atoms around the origin and then looks for the smallest periodic
 within `-extent:extent` cells. If the cell is quite pathological, then the result will not
 be within the voronoi cell.
 """
-function into_voronoi(pos::AbstractArray, cell::Matrix; extent::Integer=1)
+function into_voronoi(pos::AbstractArray, cell::AbstractMatrix; extent::Integer=1)
     zcentered = to_cartesian(origin_centered(pos, cell), cell)
     result = deepcopy(zcentered)
     norms = [norm(zcentered[:, i]) for i in 1:size(zcentered, 2)]
@@ -184,7 +207,7 @@ function into_voronoi(pos::AbstractArray, cell::Matrix; extent::Integer=1)
 end
 
 """
-    supercell(lattice::Crystal, supercell::Matrix;
+    supercell(lattice::Crystal, supercell::AbstractMatrix;
               site_id::Bool=true, cell_id::Bool=true)
 
 Creates a supercell from an input lattice.
@@ -192,13 +215,13 @@ Creates a supercell from an input lattice.
 # Parameters
 
 * `lattice::Crystal`: the original lattice
-* `supercell::Matrix`: the cell of the supercell in cartesian coordinates
+* `supercell::AbstractMatrix`: the cell of the supercell in cartesian coordinates
 * `site_id::Bool`: Whether to add/modify an atomic property indicating the index
   of the site in the original lattice
 * `cell_id::Bool`: Whether to add/modify an atomic property indicating the index
   of the cell the site belongs to
 """
-function supercell(lattice::Crystal, supercell::Matrix;
+function supercell(lattice::Crystal, supercell::AbstractMatrix;
                    site_id::Bool=true, tolerance::Real=default_tolerance)
     nrow(lattice) == 0 && Log.error("Lattice is empty")
 
@@ -249,12 +272,12 @@ end
 cell_parameters(cp::CellParameters) = cell_parameters(cp...)
 
 """
-    cell_parameters(cell::Matrix)
+    cell_parameters(cell::AbstractMatrix)
     cell_parameters(cell::Crystal)
 
 Parameters (a, b, c, α, β, γ) of the input cell.
 """
-function cell_parameters(cell::Matrix)
+function cell_parameters(cell::AbstractMatrix)
     G = transpose(cell) * cell
     a, b, c = sqrt.(diag(G))
     α = acos(0.5(G[2, 3] + G[3, 2])/(c * b))u"rad"
