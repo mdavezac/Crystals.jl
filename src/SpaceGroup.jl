@@ -2,12 +2,13 @@ module SpaceGroup
 export point_group_operations, is_primitive, primitive
 export space_group
 
-using Unitful: ustrip, Quantity
 using Crystals.Constants: default_tolerance
 using Crystals.Structures: Crystal, volume
 using Crystals.Gruber: gruber
 using Crystals.Utilities: into_voronoi, is_periodic, into_cell, is_unitful, to_fractional
+using Crystals.Utilities: to_cartesian, to_same_kind
 using Crystals: Log
+using Unitful: ustrip, Quantity, unit
 using AffineTransforms: AffineTransform
 using DataFrames: isna, by, nrow, eachrow, DataFrame, AbstractDataFrame, groupby, ncol
 
@@ -49,9 +50,7 @@ Finds and stores point group operations for a given lattice
 A lattice is defined by a 3x3 matrix or cell.  Rotations are determined from
 G-vector triplets with the same norm as the unit-cell vectors.
 
-Implementation taken from ENUM_.
-
-.. _ENUM: http://enum.sourceforge.net/
+Implementation taken from [ENUM](http://enum.sourceforge.net/).
 """
 function point_group_operations{T <: Number}(cell::AbstractMatrix{T};
                                              tolerance::Real=default_tolerance)
@@ -90,17 +89,8 @@ function point_group_operations{T, D, U}(cell::AbstractMatrix{Quantity{T, D, U}}
     point_group_operations(ustrip(cell), tolerance=tolerance)
 end
 
-# """ Index to first instance of least represented species in crystal """
-# function min_species_index(crystal::Crystal)
-#     species_count = by(crystal.properties, :species, d -> nrow(d))
-#     species = species_count[findmin(species_count[:x1])[2], :species]
-#     k = findfirst(crystal[:species], species)
-#     @assert k ≠ 0 # that should not be possible
-#     k
-# end
-
-function inner_translations_impl(cell::AbstractMatrix,
-                                 fractional::AbstractMatrix,
+function inner_translations_impl(fractional::AbstractMatrix,
+                                 cell::AbstractMatrix,
                                  species::AbstractVector;
                                  tolerance::Real=default_tolerance)
     @assert is_unitful(fractional) == Val{:unitless}()
@@ -140,30 +130,27 @@ function inner_translations_impl(cell::AbstractMatrix,
         end
         is_mapping && push!(translations, into_voronoi(translation, grubcell))
     end
-    translations
+    length(translations) == 0 && return similar(fractional, (size(fractional, 1), 0))
+    hcat(translations...)
 end
 
 """ Internal translations which leave a crystal unchanged """
-function inner_translations(cell::AbstractMatrix,
-                            positions::AbstractMatrix,
+function inner_translations(positions::AbstractMatrix,
+                            cell::AbstractMatrix,
                             species::AbstractVector;
                             kwargs...)
-    inner_translations_impl(cell, to_fractional(positions, cell), species; kwargs...)
+    inner_translations_impl(to_fractional(positions, cell), cell, species; kwargs...)
 end
-function inner_translations(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol}};
+function inner_translations(crystal::Crystal, cols::Union{Symbol, AbstractVector{Symbol}};
                             kwargs...)
     @assert nrow(crystal.properties) == nrow(crystal)
-    inner_translations(crystal.cell,
-                       crystal[:fractional],
-                       species_ids(crystal.properties, col);
+    inner_translations(crystal[:fractional],
+                       crystal.cell,
+                       species_ids(nrow(crystal), crystal.properties, cols);
                        kwargs...)
 end
 function inner_translations(crystal::Crystal; kwargs...)
-    if nrow(crystal.properties) == 0 || ncol(crystal.properties) == 0
-        inner_translations(crystal.cell, crystal[:fractional], 1:nrow(crystal); kwargs...)
-    else
-        inner_translations(crystal, names(crystal.properties); kwargs...)
-    end
+    inner_translations(crystal, names(crystal.properties); kwargs...)
 end
 
 
@@ -191,8 +178,19 @@ end
 
 species_ids(properties::AbstractDataFrame, col::Symbol) = properties[col]
 
+function species_ids(nrows::Integer,
+                     properties::AbstractDataFrame,
+                     cols::AbstractVector{Symbol})
+    if length(cols) == 0
+        Int64[1:nrows]
+    else
+        species_ids(properties, cols)
+    end
+end
+species_ids(::Integer, props::AbstractDataFrame, cols::Symbol) = species_ids(props, cols)
+
 """
-    is_primitive(cell::AbstractMatrix, fractional::AbstractMatrix, species::AbstractVector;
+    is_primitive(cartesian::AbstractMatrix, cell::AbstractMatrix, species::AbstractVector;
                  tolerance::Real=$(default_tolerance))
     is_primitive(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol}}; kwargs...)
     is_primitive(crystal::Crystal; kwargs...)
@@ -200,96 +198,119 @@ species_ids(properties::AbstractDataFrame, col::Symbol) = properties[col]
 True if the crystal structure is primitice, e.g. not a supercell, e.g. not reducible to a
 an equivalent lattice with fewer atoms.
 """
-is_primitive(args...; kwargs...) = length(inner_translations(args...; kwargs...)) == 0
+is_primitive(args...; kwargs...) = size(inner_translations(args...; kwargs...), 2) == 0
 
 # function fewest_atoms(properties::AbstractDataFrame, unicity::AbstractVector{Symbol})
 #     properties = copy(properties)
 #     row_id_name = Symbol(prod((string(u) for u in names(properties))))
 #     properties[row_id_names] = 1:nrow(properties)
 # end
-
-
-# """
-#     primitive(crystal::Crystal; tolerance::Real=$(default_tolerance))
-
-# Computes the primitive cell of the input crystal. If the crystal is primitive,
-# it is returned as is, otherwise a new crystal is returned.
-# """
-# function primitive(crystal::Crystal; tolerance::Real=default_tolerance)
-#     nrow(crystal) == 0 && return crystal
-
-#     cell = gruber(crystal.cell)
-#     trans = inner_translations(crystal, tolerance=tolerance)
-#     length(trans) == 0 && return crystal
-
-#     # adds original translations.
-#     push!(trans, cell[:, 1])
-#     push!(trans, cell[:, 2])
-#     push!(trans, cell[:, 3])
-
-#     # Looks for cell with smallest volume
-#     new_cell = deepcopy(crystal.cell)
-#     V = volume(new_cell)
-#     for (i, first) in enumerate(trans), (j, second) in enumerate(trans)
-#         i == j && continue
-#         for (k, third) in enumerate(trans)
-#             (i == k ||  j == k) && continue
-#             trial = hcat(first, second, third)
-#             abs(det(trial) < 1e-12) && continue
-#             (abs(det(trial)) > V - 3.0 * tolerance) && continue
-
-#             if det(trial) < 0e0
-#                 trial[:, 2], trial[:, 1] = second, third
-#             end
-#             det(trial) < 0e0 && Log.error("Negative volume")
-
-#             int_cell = inv(trial) * cell
-#             all(abs(int_cell - round(Integer, int_cell) .< 1e-8)) || continue
-
-#             new_cell = trial
-#             V = volume(trial)
-#         end
-#     end
-
-#     # Found the new cell with smallest volume (e.g. primivite)
-#     V < volume(crystal) - tolerance ||
-#         Log.error("Found translation but no primitive cell.")
-
-#     # now creates new lattice.
-#     result = Crystal(eltype(crystal.cell), gruber(new_cell), crystal.scale)
-#     columns = filter(names(crystal.atoms)) do x; x ∉ (:site_id, :cell_id) end
-#     result.atoms = crystal[1:0, columns]
-#     Log.debug("Found gruber cell $(result.cell)")
-
-#     invcell = inv(result.cell)
-#     for site in eachrow(crystal)
-#         position = into_cell(
-#             site[:position], result.cell, invcell; tolerance=tolerance)
-#         k = findfirst(eachrow(result)) do atom
-#             site[:species] == atom[:species] &&
-#             all(abs(position - atom[:position]) .< tolerance)
-#         end
-#         if k == 0
-#             push!(result, site; no_new_properties=true)
-#             result[end, :position] = position
-#             Log.debug("Adding one atom", position=position)
-#         end
-#     end
-
-#     nrow(crystal) % nrow(result) ≠ 0 && Log.error(
-#         "Nb of atoms in output not multiple of input: " *
-#         "$(nrow(crystal)) % $(nrow(result)) ≠ 0"
-#     )
-
-#     abs(
-#         nrow(crystal) * volume(result) - nrow(result) * volume(crystal)
-#     ) < tolerance || Log.error(
-#         "Size and volumes do not match: " *
-#         "abs($(nrow(crystal)) * $(volume(result)) - $(nrow(result)) *" *
-#         "$(volume(crystal))) ≥ $(tolerance)"
-#     )
-#     result
+# """ Index to first instance of least represented species in crystal """
+# function min_species_index(crystal::Crystal)
+#     species_count = by(crystal.properties, :species, d -> nrow(d))
+#     species = species_count[findmin(species_count[:x1])[2], :species]
+#     k = findfirst(crystal[:species], species)
+#     @assert k ≠ 0 # that should not be possible
+#     k
 # end
+
+
+
+"""
+    primitive(crystal::Crystal; tolerance::Real=$(default_tolerance))
+
+Computes the primitive cell of the input crystal. If the crystal is primitive,
+it is returned as is, otherwise a new crystal is returned.
+"""
+function primitive(crystal::Crystal; kwargs...)
+    primitive(crystal, names(crystal.properties); kwargs...)
+end
+function primitive(crystal::Crystal, cols::Union{Symbol, AbstractVector{Symbol}}; kwargs...)
+    @assert nrow(crystal.properties) == nrow(crystal)
+    const species = species_ids(nrow(crystal), crystal.properties, cols)
+    new_cell, indices = primitive(crystal.cell, crystal[:position], species; kwargs...)
+    const incell = into_cell(crystal[indices, :cartesian], new_cell)
+    const positions = to_same_kind(incell, incell, new_cell)
+    typeof(crystal)(new_cell, positions, crystal.properties[indices, :])
+end
+function primitive(cell::AbstractMatrix, positions::AbstractMatrix, species::AbstractVector;
+                   kwargs...)
+    primitive_impl(cell, to_cartesian(positions, cell), species; kwargs...)
+end
+
+function primitive_impl(cell::AbstractMatrix,
+                        cartesian::AbstractMatrix,
+                        species::AbstractVector;
+                        tolerance::Real=default_tolerance)
+    if size(cartesian, 2) ≠ length(species)
+        Log.error("Positions and species have incompatible sizes")
+    end
+    size(cell, 2) == size(cartesian, 1) || Log.error("Cell and positions are incompatible")
+    size(cartesian, 2) == 0 && return cell, Int64[1:length(species)...]
+
+    grubcell = gruber(cell)
+    trans = grubcell * inner_translations(inv(grubcell) * cartesian, grubcell, species;
+                                          tolerance=tolerance)
+    size(trans, 2) == 0 && return cell, Int64[1:length(species)...]
+
+    # adds original translations.
+    trans = hcat(trans, grubcell)
+
+    # Looks for cell with smallest volume
+    new_cell = deepcopy(grubcell)
+    V = volume(new_cell)
+    for i ∈ 1:size(trans, 2), j ∈ 1:size(trans, 2), k ∈ 1:size(trans, 2)
+        (i == k ||  j == k || i == j) && continue
+        trial = trans[:, [i, j, k]]
+        volume(trial) < 1e-12 * unit(V) && continue
+        (volume(trial) > V - 3.0 * tolerance * unit(V)) && continue
+
+        if det(ustrip(trial)) < 0e0
+            trial = trans[:, [k, j, i]]
+        end
+        det(ustrip(trial)) < 0e0 && Log.error("Negative volume")
+
+        int_cell = inv(trial) * cell
+        all(abs(int_cell - round(Integer, int_cell) .< 1e-8)) || continue
+
+        new_cell = trial
+        V = volume(trial)
+    end
+
+    # Found the new cell with smallest volume (e.g. primivite)
+    if V ≥ volume(grubcell) - tolerance * unit(V)
+        Log.error("Found translation but no primitive cell.")
+    end
+
+    # now creates new lattice.
+    indices = Int64[]
+    Log.debug("Found gruber cell $(grubcell)")
+
+    for site in 1:size(cartesian, 2)
+        position = into_cell(cartesian[:, site], new_cell; tolerance=tolerance)
+        k = findfirst(indices) do index
+            species[site] == species[index] &&
+            is_periodic(position, cartesian[:, index], new_cell, tolerance=tolerance)
+        end
+        if k == 0
+            push!(indices, site)
+        end
+    end
+
+    length(species) % length(indices) ≠ 0 && Log.error(
+        "Nb of atoms in output not multiple of input: " *
+        "$(length(species)) % $(length(indices)) ≠ 0"
+    )
+
+    abs(
+        length(species) * volume(new_cell) - length(indices) * volume(cell)
+       ) < tolerance * unit(volume(new_cell))|| Log.error(
+        "Size and volumes do not match: " *
+        "abs($(length(species)) * $(volume(new_cell)) - $(length(indices)) *" *
+        "$(volume(cell))) ≥ $(tolerance * unit(volume(new_cell)))"
+    )
+    new_cell, indices
+end
 
 # """
 # Computes space-group operations

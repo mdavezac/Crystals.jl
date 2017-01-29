@@ -1,3 +1,11 @@
+function valid_cell(size::Integer=3)
+    cell = rand(-3:3, (3, 3))
+    while det(cell) ≤ 0
+        cell = rand(-3:3, (3, 3))
+    end
+    cell
+end
+
 cells = Any[
   [1.5 -0.5 -0.5;  0  1 -0.5; 0.5 -0.5  1]u"nm",
   [1.5 -0.5 -0.5;  0  1 -0.5; 0.5 -0.5  1]
@@ -69,41 +77,38 @@ end
     diamond[:species] = ["A", "A"]
     @testset ">> No translations" begin
         translations = Crystals.SpaceGroup.inner_translations(diamond)
-        @test length(translations) == 0
+        @test size(translations, 2) == 0
+        @test size(translations, 1) == size(diamond[:position], 1)
     end
     @testset ">> Supercell" begin
-        cell = -1
-        while det(cell) ≤ 0
-          cell = rand(-3:3, (3, 3))
-        end
+        cell = valid_cell(3)
         large = supercell(diamond, diamond.cell * cell)
         @test nrow(large) == round(Integer, det(cell)) * nrow(diamond)
         translations = Crystals.SpaceGroup.inner_translations(large)
-        @test length(translations) == round(Integer, det(cell) - 1)
+        @test size(translations, 2) == round(Integer, det(cell) - 1)
+        @test size(translations, 1) == size(diamond[:position], 1)
     end
 end
 
-# @testset "> Make primitive" begin do
-#     zinc_blende = Lattices.zinc_blende()
-#     @test is_primitive(zinc_blende) --> true
-#     @test primitive(zinc_blende) --> exactly(zinc_blende)
+@testset "> Make primitive" begin
+    zinc_blende = Lattices.zinc_blende()
+    @test is_primitive(zinc_blende)
+    @test primitive(zinc_blende).cell ≈ zinc_blende.cell
+    @test nrow(primitive(zinc_blende)) == nrow(zinc_blende)
 
-#     cell = -1
-#     while det(cell) ≤ 0
-#         cell = rand(-3:3, (3, 3))
-#     end
-#     large = supercell(zinc_blende, zinc_blende.cell * cell)
-#     @test is_primitive(large) --> false
-#     prim = primitive(large)
-#     @test niggly(prim.cell) --> roughly(niggly(zinc_blende.cell))
-#     @test nrow(prim) --> nrow(zinc_blende)
-#     for i in 1:2
-#         prim_pos = prim[i, :position]
-#         d_pos = zinc_blende[i, :position]
-#         @test is_periodic(prim_pos, d_pos, prim.cell) --> true
-#         @test is_periodic(prim_pos, d_pos, zinc_blende.cell) --> true
-#     end
-# end
+    cell = valid_cell(3)
+    large = supercell(zinc_blende, zinc_blende.cell * cell)
+    @test !is_primitive(large)
+    prim = primitive(large)
+    @test niggly(prim.cell) ≈ niggly(zinc_blende.cell)
+    @test nrow(prim) == nrow(zinc_blende)
+    for i in 1:2
+        prim_pos = prim[i, :position]
+        d_pos = zinc_blende[i, :position]
+        @test is_periodic(prim_pos, d_pos, prim.cell)
+        @test is_periodic(prim_pos, d_pos, zinc_blende.cell)
+    end
+end
 
 # @testset "> Space group operations" begin do
 #     @testset ">> fcc" begin
