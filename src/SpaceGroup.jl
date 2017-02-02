@@ -1,6 +1,5 @@
 module SpaceGroup
-export point_group_operations, is_primitive, primitive
-export space_group
+export point_group, is_primitive, primitive, space_group
 
 using Crystals.Constants: default_tolerance
 using Crystals.Structures: Crystal, volume
@@ -52,8 +51,8 @@ G-vector triplets with the same norm as the unit-cell vectors.
 
 Implementation taken from [ENUM](http://enum.sourceforge.net/).
 """
-function point_group_operations{T <: Number}(cell::AbstractMatrix{T};
-                                             tolerance::Real=default_tolerance)
+function point_group{T <: Number}(cell::AbstractMatrix{T};
+                                  tolerance::Real=default_tolerance)
     @assert size(cell, 1) == size(cell, 2)
     const ndims = size(cell, 1)
 
@@ -84,9 +83,9 @@ function point_group_operations{T <: Number}(cell::AbstractMatrix{T};
     result;
 end
 
-function point_group_operations{T, D, U}(cell::AbstractMatrix{Quantity{T, D, U}};
+function point_group{T, D, U}(cell::AbstractMatrix{Quantity{T, D, U}};
                                          tolerance::Real=default_tolerance)
-    point_group_operations(ustrip(cell), tolerance=tolerance)
+    point_group(ustrip(cell), tolerance=tolerance)
 end
 
 function inner_translations_impl(fractional::AbstractMatrix,
@@ -317,7 +316,7 @@ function space_group_impl(cell::AbstractMatrix,
     const minsite = find_min_species_index(species)
     const minspecies = species[minsite]
     const minpos = cartesian[:, minsite]
-    const point_group = point_group_operations(grubcell, tolerance=tolerance)
+    const pg_ops = point_group(grubcell, tolerance=tolerance)
 
     # translations limited to those from one atom type to othe atom of same type
     translations = cartesian[:, species .==  minspecies]
@@ -325,7 +324,7 @@ function space_group_impl(cell::AbstractMatrix,
     translations = into_cell(translations, grubcell; tolerance=tolerance)
 
     result = AffineTransform[]
-    for pg in point_group
+    for pg in pg_ops
         for trial in 1:size(translations, 2)
             is_invariant = findfirst(eachindex(species)) do mapper
                 position = pg * (cartesian[:, mapper] - minpos) + translations[:, trial]

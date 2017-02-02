@@ -32,10 +32,10 @@ end
         ([-0.7 0.7 0.7; 0.6 -0.5 0.5; 0.6 0.5 -0.5], 8),
         ([-0.765 0.7 0.7; 0.665 -0.5 0.5; 0.6 0.5 -0.5], 2)
     ]
-    allops = point_group_operations([0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0])
+    allops = point_group([0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0])
 
     @testset "Cell: $cell" for (cell, numops) in parameters
-        ops = point_group_operations(cell)
+        ops = point_group(cell)
         @test length(ops) == numops
         for op in ops
             @test size(op) == (3, 3)
