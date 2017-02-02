@@ -1,7 +1,8 @@
 julia 0.4
 Unitful
-FixedSizeArrays
 DataFrames
 AffineTransforms
 Lumberjack
 NamedTuples
+Documenter
+DocStringExtensions
