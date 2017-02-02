@@ -58,7 +58,7 @@ function point_group_operations{T <: Number}(cell::AbstractMatrix{T};
     const ndims = size(cell, 1)
 
     avecs, bvecs, cvecs = potential_equivalents(cell, tolerance=tolerance)
-    result = [eye(cell)]
+    result = Matrix{T}[eye(cell)]
 
     const identity = eye(cell)
     const invcell = inv(cell)
@@ -81,7 +81,7 @@ function point_group_operations{T <: Number}(cell::AbstractMatrix{T};
         index = findfirst(x -> all(ustrip.(abs.(x .- rotation)) .< tolerance), result)
         index ≠ 0 || push!(result, rotation)
     end
-    map(x -> AffineTransform(x, zeros(size(cell, 1))), result)
+    result;
 end
 
 function point_group_operations{T, D, U}(cell::AbstractMatrix{Quantity{T, D, U}};
@@ -164,7 +164,7 @@ function species_ids(properties::AbstractDataFrame, cols::AbstractVector{Symbol}
         return Vector{Int64}(1:nrow(properties))
     end
     props = copy(properties)
-    row_ids_name = Symbol(prod((string(u) for u in names(properties))))
+    row_ids_name = Symbol("row_" * prod((string(u) for u in names(properties))))
     props[row_ids_name] = 1:nrow(props)
 
     results = zeros(Int64, (nrow(props,)))
@@ -180,7 +180,7 @@ function species_ids(nrows::Integer,
                      properties::AbstractDataFrame,
                      cols::AbstractVector{Symbol})
     if length(cols) == 0
-        Int64[1:nrows]
+        Int64[1:nrows...]
     else
         species_ids(properties, cols)
     end
@@ -217,7 +217,6 @@ function primitive(crystal::Crystal; kwargs...)
     primitive(crystal, names(crystal.properties); kwargs...)
 end
 function primitive(crystal::Crystal, cols::Union{Symbol, AbstractVector{Symbol}}; kwargs...)
-    @assert nrow(crystal.properties) == nrow(crystal)
     const species = species_ids(nrow(crystal), crystal.properties, cols)
     new_cell, indices = primitive(crystal.cell, crystal[:position], species; kwargs...)
     const incell = into_cell(crystal[indices, :cartesian], new_cell)
@@ -258,7 +257,7 @@ function primitive_impl(cell::AbstractMatrix,
         (volume(trial) > V - 3.0 * tolerance * unit(V)) && continue
 
         if det(ustrip(trial)) < 0e0
-            index[1], index[2:end] = index[end], index[1:end-1]
+            reverse!(index)
             trial = trans[:, index]
         end
         det(ustrip(trial)) < 0e0 && Log.error("Negative volume")
@@ -305,47 +304,65 @@ function primitive_impl(cell::AbstractMatrix,
     new_cell, indices
 end
 
-# """
-# Computes space-group operations
-# """
-# function space_group(crystal::Crystal, tolerance::Real=default_tolerance)
+"""
+Computes space-group operations
+"""
+function space_group_impl(cell::AbstractMatrix,
+                          cartesian::AbstractMatrix,
+                          species::AbstractVector;
+                          tolerance::Real=default_tolerance)
 
-#     const cell = gruber(crystal.cell, tolerance=tolerance)
-#     const invcell = inv(cell)
-#     const site = crystal[min_species_index(crystal), [:position, :species]]
-#     const point_group = point_group_operations(cell, tolerance=tolerance)
+    const grubcell = gruber(cell, tolerance=tolerance)
+    const invcell = inv(grubcell)
+    const minsite = find_min_species_index(species)
+    const minspecies = species[minsite]
+    const minpos = cartesian[:, minsite]
+    const point_group = point_group_operations(grubcell, tolerance=tolerance)
 
-#     # translations limited to those from one atom type to othe atom of same type
-#     translations = crystal[crystal[:species] .== site[:species], :position]
-#     translations -= translations[1]
-#     translations = into_cell(translations, cell, invcell; tolerance=tolerance)
+    # translations limited to those from one atom type to othe atom of same type
+    translations = cartesian[:, species .==  minspecies]
+    translations .-= translations[:, 1]
+    translations = into_cell(translations, grubcell; tolerance=tolerance)
 
-#     result = AffineTransform{eltype(crystal.cell), size(crystal.cell, 1)}[]
-#     for pg in point_group
-#         for trial in translations
-#             is_invariant = findfirst(eachrow(crystal)) do mapper
-#                 position = pg * (mapper[:position] - site[1, :position]) + trial
-#                 mappee = findfirst(eachrow(crystal)) do atom
-#                     mapper[:species] == atom[:species] &&
-#                     is_periodic(position, atom[:position] - site[1, :position], cell, invcell;
-#                                 tolerance=tolerance)
-#                 end
-#                 mappee == 0
-#             end
-#             if is_invariant == 0
-#                 translation = into_voronoi(
-#                     trial - pg * site[1, :position] + site[1, :position],
-#                     cell, invcell
-#                 )
-#                 push!(result, pg * AffineTransform(eye(ndims(pg)), translation))
-#             end
-#         end
-#     end
-#     Log.info(
-#         "$(length(result)) symmetry operations found, with " *
-#         "$(count(result) do op; all(abs(op.offset) .< 1e-8) end) " *
-#         "pure symmetries."
-#     )
-#     result
-# end
+    result = AffineTransform[]
+    for pg in point_group
+        for trial in 1:size(translations, 2)
+            is_invariant = findfirst(eachindex(species)) do mapper
+                position = pg * (cartesian[:, mapper] - minpos) + translations[:, trial]
+                mappee = findfirst(eachindex(species)) do atom
+                    species[mapper] == species[atom] &&
+                    is_periodic(position, cartesian[:, atom] - minpos, grubcell;
+                                tolerance=tolerance)
+                end
+                mappee == 0
+            end
+            if is_invariant == 0
+                const pos = pg * cartesian[:, minsite] - cartesian[:, minsite]
+                translation = into_voronoi(translations[:, trial] - pos, grubcell)
+                push!(result, AffineTransform(Val{:units}, pg, translation))
+            end
+        end
+    end
+    Log.info(
+        "$(length(result)) symmetry operations found, with " *
+        "$(count(result) do op; all(abs(ustrip(op.offset)) .< 1e-8) end) " *
+        "pure symmetries."
+    )
+    result
+end
+
+function space_group(crystal::Crystal; kwargs...)
+    space_group(crystal, names(crystal.properties); kwargs...)
+end
+function space_group(crystal::Crystal, cols::Union{Symbol, AbstractVector{Symbol}};
+                     kwargs...)
+    const species = species_ids(nrow(crystal), crystal.properties, cols)
+    space_group(crystal.cell, crystal[:position], species; kwargs...)
+end
+function space_group(cell::AbstractMatrix,
+                     positions::AbstractMatrix,
+                     species::AbstractVector;
+                     kwargs...)
+    space_group_impl(cell, to_cartesian(positions, cell), species; kwargs...)
+end
 end

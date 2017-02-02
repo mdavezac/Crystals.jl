@@ -9,9 +9,6 @@ all_integers(x::Array, ε::AbstractFloat=1e-8) = all(abs(x - round(Integer, x)) 
 all_integers(ε::AbstractFloat=1e-8) = y -> all_integers(y, ε)
 is_subtype(x::Type) = y -> (y <: x)
 
-# @testset "Positions" begin
-#     include("Positions.jl")
-# end
 @testset "Crystal" begin
     include("Crystal.jl")
 end
@@ -31,5 +28,4 @@ end
     include("Gruber.jl")
 end
 
-# exitstatus()
 end

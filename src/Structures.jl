@@ -1,5 +1,6 @@
 module Structures
 export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices, round!
+# export cartesian, fractional
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
 using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
@@ -133,6 +134,27 @@ function position_for_crystal(crystal::Crystal, other::Crystal)
     @assert are_compatible_lattices(crystal, other)
     position_for_crystal(crystal, position_for_crystal(Val{:cartesian}(), other))
 end
+
+# """
+#     cartesian(cell::AbstractMatrix, positions::AbstractArray)
+#     cartesian(crystal::Crystal)
+#
+# No-op returning positions if already in cartesian coordinates (unitful) or transforms them
+# if in fractional coordinates (unitless).
+# """
+# cartesian(c::AbstractMatrix, p::AbstractArray) = position_for_crystal(Val{:cartesian}, c, p)
+# cartesian(crystal::Crystal) = cartesian(c.cell, c.positions)
+# """
+#     fractional(cell::AbstractMatrix, positions::AbstractArray)
+#     fractional(crystal::Crystal)
+#
+# No-op returning positions if already in fractional coordinates (unitful) or transforms them
+# if in cartesian coordinates (unitless).
+# """
+# function fractional(c::AbstractMatrix, p::AbstractArray)
+#     position_for_crystal(Val{:fractional}, c, p)
+# end
+# fractional(crystal::Crystal) = fractional(c.cell, c.positions)
 
 
 @inline _is_not_position(s::Symbol) = :position ≠ s

@@ -1,6 +1,6 @@
-function valid_cell(size::Integer=3)
+function valid_super_cell(size::Integer=3)
     cell = rand(-3:3, (3, 3))
-    while det(cell) ≤ 0
+    while det(cell) ≤ 1
         cell = rand(-3:3, (3, 3))
     end
     cell
@@ -38,16 +38,15 @@ end
         ops = point_group_operations(cell)
         @test length(ops) == numops
         for op in ops
-            @test size(op.scalefwd) == (3, 3)
-            @test op.offset ≈ [0, 0, 0]
-            transformation = inv(cell) * op.scalefwd * cell
+            @test size(op) == (3, 3)
+            transformation = inv(cell) * op * cell
             @test isinteger(round(transformation, 8))
             @test volume(transformation) ≈ 1.0
 
             if numops != 48
                 found = 0
                 for op in allops
-                    transformation = inv(cell) * op.scalefwd * cell
+                    transformation = inv(cell) * op * cell
                     isinteger(round(transformation, 8)) || continue
                     isapprox(volume(transformation), 1, rtol=1e-8) || continue
                     found += 1
@@ -81,7 +80,7 @@ end
         @test size(translations, 1) == size(diamond[:position], 1)
     end
     @testset ">> Supercell" begin
-        cell = valid_cell(3)
+        cell = valid_super_cell(3)
         large = supercell(diamond, diamond.cell * cell)
         @test nrow(large) == round(Integer, det(cell)) * nrow(diamond)
         translations = Crystals.SpaceGroup.inner_translations(large)
@@ -96,7 +95,7 @@ end
     @test primitive(zinc_blende).cell ≈ zinc_blende.cell
     @test nrow(primitive(zinc_blende)) == nrow(zinc_blende)
 
-    cell = valid_cell(3)
+    cell = valid_super_cell(3)
     large = supercell(zinc_blende, zinc_blende.cell * cell)
     @test !is_primitive(large)
     prim = primitive(large)
@@ -110,20 +109,21 @@ end
     end
 end
 
-# @testset "> Space group operations" begin do
-#     @testset ">> fcc" begin
-#       fcc = Lattices.fcc()
-#       ops = space_group(fcc)
-#       @test length(ops) --> 48
-#       for op in ops
-#           @test op * [0, 0, 0] --> [0, 0, 0]
-#       end
-#     end
+@testset "> Space group operations" begin
+    @testset ">> fcc" begin
+      fcc = Lattices.fcc()
+      ops = space_group(fcc)
+      @test length(ops) == 48
+      for op in ops
+          # No translations
+          @test op * [0, 0, 0]u"nm" ≈ [0, 0, 0]u"nm"
+      end
+    end
 
-#     @testset ">> b5" begin
-#         b5 = Lattices.b5()
-#         ops = space_group(b5)
-#         @test length(ops) --> 48
-#         @test count(ops) do op; all(abs(op.offset) .< 1e-12) end --> 12
-#     end
-# end
+    @testset ">> b5" begin
+        b5 = Lattices.b5()
+        ops = space_group(b5)
+        @test length(ops) == 48
+        @test count(op -> all(abs(ustrip(op.offset)) .< 1e-12), ops) == 12
+    end
+end
