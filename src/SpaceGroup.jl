@@ -103,17 +103,15 @@ function inner_translations_impl(fractional::AbstractMatrix,
     grubcell = gruber(cell)
 
     # find species with minimum number of atoms
-    unique_species = unique(species)
-    k = findmin([countnz(species .== u) for u in unique(species)])[2]
-    atom_type = unique_species[k]
-    k = findfirst(species, atom_type)
-    center = fractional[:, k]
+    const atom_index = find_min_species_index(species)
+    const atom_center = fractional[:, atom_index]
+    const atom_type = species[atom_index]
 
     translations = []
     for site ∈ eachindex(species)
         species[site] ≠ atom_type && continue
 
-        translation = into_voronoi(fractional[:, site] - center, grubcell)
+        translation = into_voronoi(fractional[:, site] - atom_center, grubcell)
         all(abs(translation) .< tolerance) && continue
 
         is_mapping = true
@@ -200,20 +198,13 @@ an equivalent lattice with fewer atoms.
 """
 is_primitive(args...; kwargs...) = size(inner_translations(args...; kwargs...), 2) == 0
 
-# function fewest_atoms(properties::AbstractDataFrame, unicity::AbstractVector{Symbol})
-#     properties = copy(properties)
-#     row_id_name = Symbol(prod((string(u) for u in names(properties))))
-#     properties[row_id_names] = 1:nrow(properties)
-# end
-# """ Index to first instance of least represented species in crystal """
-# function min_species_index(crystal::Crystal)
-#     species_count = by(crystal.properties, :species, d -> nrow(d))
-#     species = species_count[findmin(species_count[:x1])[2], :species]
-#     k = findfirst(crystal[:species], species)
-#     @assert k ≠ 0 # that should not be possible
-#     k
-# end
-
+""" Index to first instance of least represented species in crystal """
+function find_min_species_index(species::AbstractVector)
+    unique_species = unique(species)
+    k = findmin([countnz(species .== u) for u in unique(species)])[2]
+    atom_type = unique_species[k]
+    findfirst(species, atom_type)
+end
 
 
 """
@@ -259,14 +250,16 @@ function primitive_impl(cell::AbstractMatrix,
     # Looks for cell with smallest volume
     new_cell = deepcopy(grubcell)
     V = volume(new_cell)
-    for i ∈ 1:size(trans, 2), j ∈ 1:size(trans, 2), k ∈ 1:size(trans, 2)
-        (i == k ||  j == k || i == j) && continue
-        trial = trans[:, [i, j, k]]
+    for i ∈ CartesianRange(((ones(Int64, size(cell, 1)) * size(trans, 2))...))
+        issorted(i.I, lt=≤) || continue
+        index = [i.I...]
+        trial = trans[:, index]
         volume(trial) < 1e-12 * unit(V) && continue
         (volume(trial) > V - 3.0 * tolerance * unit(V)) && continue
 
         if det(ustrip(trial)) < 0e0
-            trial = trans[:, [k, j, i]]
+            index[1], index[2:end] = index[end], index[1:end-1]
+            trial = trans[:, index]
         end
         det(ustrip(trial)) < 0e0 && Log.error("Negative volume")
 
