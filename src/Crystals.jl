@@ -36,6 +36,14 @@ export into_voronoi, supercell, cell_parameters
 export point_group, inner_translations, is_primitive, primitive, space_group
 export Lattices
 
+if Pkg.installed("Unitful") ≤ v"0.0.4"
+    function Base.inv{T<:Quantity}(x::StridedMatrix{T})
+        m = inv(ustrip(x))
+        iq = eltype(m)
+        reinterpret(Quantity{iq, typeof(inv(dimension(T))), typeof(inv(unit(T)))}, m)
+    end
+end
+
 include("Logging.jl")
 
 module Constants
