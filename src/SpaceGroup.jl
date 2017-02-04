@@ -8,7 +8,7 @@ using Crystals.Utilities: into_voronoi, is_periodic, into_cell, is_unitful, to_f
 using Crystals.Utilities: to_cartesian, to_same_kind
 using Crystals: Log
 using Unitful: ustrip, Quantity, unit
-using AffineTransforms: AffineTransform
+using CoordinateTransformations: AffineMap
 using DataFrames: isna, by, nrow, eachrow, DataFrame, AbstractDataFrame, groupby, ncol
 
 """
@@ -323,7 +323,7 @@ function space_group_impl(cell::AbstractMatrix,
     translations .-= translations[:, 1]
     translations = into_cell(translations, grubcell; tolerance=tolerance)
 
-    result = AffineTransform[]
+    result = AffineMap[]
     for pg in pg_ops
         for trial in 1:size(translations, 2)
             is_invariant = findfirst(eachindex(species)) do mapper
@@ -338,16 +338,17 @@ function space_group_impl(cell::AbstractMatrix,
             if is_invariant == 0
                 const pos = pg * cartesian[:, minsite] - cartesian[:, minsite]
                 translation = into_voronoi(translations[:, trial] - pos, grubcell)
-                push!(result, AffineTransform(Val{:units}, pg, translation))
+                push!(result, AffineMap(pg, translation))
             end
         end
     end
     Log.info(
         "$(length(result)) symmetry operations found, with " *
-        "$(count(result) do op; all(abs(ustrip(op.offset)) .< 1e-8) end) " *
-        "pure symmetries."
+        "$(count(result) do op
+           all(abs(ustrip(op(zeros(eltype(cartesian), size(translations, 1))))) .< 1e-8)
+        end) " * "pure symmetries."
     )
-    result
+    [u for u in result]
 end
 
 function space_group(crystal::Crystal; kwargs...)

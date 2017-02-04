@@ -24,7 +24,7 @@ properties:
                       label=[:+, :-, :-])
 """
 module Crystals
-using Unitful: @u_str
+using Unitful
 export @u_str
 
 export Crystal, is_fractional, volume, round!
@@ -61,8 +61,8 @@ include("SpaceGroup.jl")
 using .SpaceGroup
 
 module Lattices
+  using Unitful
   using Crystals.Structures.Crystal
-  using Unitful: @u_str
   include("Bravais.jl")
   include("Binary.jl")
   include("A2BX4.jl")

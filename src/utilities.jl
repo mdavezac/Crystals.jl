@@ -7,8 +7,9 @@ using Crystals.Structures: Crystal
 using Crystals.SNF: smith_normal_form
 using Crystals: Log
 using DataFrames: nrow, DataArray
-using Unitful: Quantity, Dimensions, @u_str, unit, uconvert
 using NamedTuples: @NT
+using Unitful
+using Unitful: Dimensions
 
 """
     eldimension(u::Any)
@@ -251,14 +252,15 @@ typealias CellParameters @NT(a, b, c, α, β, γ)
 
 """
     cell_parameters(a::Quantity, b::Quantity, c::Quantity,
-                    α::Quantity=π/2u"rad", β::Quantity=π/2u"rad", γ::Quantity=π/2u"rad")
+                    α::Quantity=(π/2)u"rad", β::Quantity=(π/2)u"rad",
+                    γ::Quantity=(π/2)u"rad")
 
 Computes cell from input cell parameters [a, b, c, α, β, γ].  α, β, γ are in
 radian.
 """
 function cell_parameters(a::Quantity, b::Quantity, c::Quantity,
-                         α::Quantity=π/2u"rad", β::Quantity=π/2u"rad",
-                         γ::Quantity=π/2u"rad")
+                         α::Quantity=(π/2)u"rad", β::Quantity=(π/2)u"rad",
+                         γ::Quantity=(π/2)u"rad")
     cx = cos(β)
     cy = (cos(α) - cos(β)cos(γ))/sin(γ)
     units = unit(a)

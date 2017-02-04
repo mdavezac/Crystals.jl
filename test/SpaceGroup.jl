@@ -116,7 +116,7 @@ end
       @test length(ops) == 48
       for op in ops
           # No translations
-          @test op * [0, 0, 0]u"nm" ≈ [0, 0, 0]u"nm"
+          @test op([0, 0, 0]u"nm") ≈ [0, 0, 0]u"nm"
       end
     end
 
@@ -124,6 +124,6 @@ end
         b5 = Lattices.b5()
         ops = space_group(b5)
         @test length(ops) == 48
-        @test count(op -> all(abs(ustrip(op.offset)) .< 1e-12), ops) == 12
+        @test count(op -> all(abs(ustrip(op([0, 0, 0]u"nm"))) .< 1e-12), ops) == 12
     end
 end
