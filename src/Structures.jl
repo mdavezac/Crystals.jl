@@ -6,6 +6,7 @@ using Unitful: Quantity, Dimensions, Units, unit, ustrip
 using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
 using Crystals: Log
 import Base
+import Base: delete!
 import Unitful
 import DataFrames
 using Unitful: dimension, unit
@@ -106,7 +107,9 @@ volume(crystal::Crystal) = volume(crystal.cell)
 """
     $(SIGNATURES)
 
-True if the lattices are mathematically equivalent.
+True if the lattices are mathematically equivalent. Two lattices are equivalent if they
+represent the same periodicity. In practice, this means the two lattices have the same
+volume, and their cell vectors are integer linear combinations of one another.
 """
 function are_compatible_lattices(a::Matrix, b::Matrix)
     isinteger(inv(a) * b) && volume(a) ≈ volume(b)
@@ -114,6 +117,14 @@ end
 are_compatible_lattices(a::Crystal, b::Matrix) = are_compatible_lattices(a.cell, b)
 are_compatible_lattices(a::Crystal, b::Crystal) = are_compatible_lattices(a.cell, b.cell)
 are_compatible_lattices(a::Matrix, b::Crystal) = are_compatible_lattices(a, b.cell)
+function are_compatible_lattices(a::Crystal, other::Vararg{Crystal})
+    for u in other
+        if !are_compatible_lattices(a.cell, u.cell)
+            return false
+        end
+    end
+    true
+end
 
 
 """
@@ -438,8 +449,11 @@ function Base.setindex!(crystal::Crystal, v::Any, col::Symbol)
 end
 
 function Base.setindex!(crystal::Crystal, v::Crystal,
-                        row::Any, cols::AbstractVector{Symbol})
+                        row::Any, cols::AbstractVector{Symbol}; check_periodicity=true)
     if :position ∈ cols
+        if check_periodicity && !are_compatible_lattices(crystal, v)
+            Log.error("The two crystal structures do not have the same periodicity")
+        end
         crystal.positions[:, row] = position_for_crystal(crystal, v)
         setindex!(crystal.properties, v.properties, row, filter(x -> x ≠ :position, cols))
     else
@@ -534,7 +548,10 @@ delete!(crystal::Crystal, rows::RowIndices) = deleterows!(crystal, rows)
 
 Concatenates crystals together. The lattices must be compatible.
 """
-function Base.vcat(crystal::Crystal, other::Vararg{Crystal})
+function Base.vcat(crystal::Crystal, other::Vararg{Crystal}; check_periodicity=true)
+    if check_periodicity && !are_compatible_lattices(crystal, other...)
+        Log.error("Some crystal structures do not have the same periodicity")
+    end
     typeof(crystal)(crystal.cell,
                     hcat(crystal.positions,
                          (position_for_crystal(crystal, u) for u in other)...),
@@ -550,12 +567,8 @@ Appends one or more crystal structure to the first structure. Unless `check_peri
 otherwise.
 """
 function Base.append!(crystal::Crystal, other::Vararg{Crystal}; check_periodicity=true)
-    if check_periodicity
-        for (i, u) in enumerate(other)
-            if !are_compatible_lattices(crystal.cell, u.cell)
-                Log.error("Crystal structure $i does not have the same periodicity")
-            end
-        end
+    if check_periodicity && !are_compatible_lattices(crystal, other...)
+        Log.error("Some crystal structures do not have the same periodicity")
     end
     crystal.positions = hcat(crystal.positions,
                              (position_for_crystal(crystal, u) for u in other)...)
