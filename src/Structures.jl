@@ -5,6 +5,7 @@ using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
 using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
 using Crystals: Log
+using Crystals.Constants: default_tolerance
 import Base
 import Base: delete!
 import Unitful
@@ -102,28 +103,80 @@ volume(cell::Matrix) = abs(det(cell))
 function volume{T, D, U}(cell::Matrix{Quantity{T, D, U}})
     abs(det(ustrip(cell))) * unit(eltype(cell))^3
 end
-volume(crystal::Crystal) = volume(crystal.cell)
-
 """
     $(SIGNATURES)
+
+Returns the volume of a `Crystal` instance or of a cell. It comes down to computing
+``|\det(A)|`` where ``A`` is the crystal cell.
+
+# Examples
+
+```jldoctest
+julia> using Crystals
+
+julia> volume(Crystal([0 2 2; 2 0 2; 2 2 0]u"nm"))
+16.0 nm^3
+
+julia> volume([0 2 2; 2 0 2; 2 2 0]u"nm")
+16.0 nm^3
+
+julia> volume([0 2 2; 2 0 2; 2 2 0])
+16.0
+```
+"""
+volume(crystal::Crystal) = volume(crystal.cell)
+
+function are_compatible_lattices(cell_a::Matrix, cell_b::Matrix;
+                                 digits=12, rtol=default_tolerance, atol=default_tolerance)
+    isinteger(round(inv(cell_a) * cell_b, digits)) &&
+    isapprox(ustrip(volume(cell_a)), ustrip(volume(cell_b)); rtol=rtol, atol=atol)
+end
+function are_compatible_lattices(crystal::Crystal, cell::Matrix; kwargs...)
+    are_compatible_lattices(crystal.cell, cell)
+end
+function are_compatible_lattices(crystal_a::Crystal, crystal_b::Crystal; kwargs...)
+    are_compatible_lattices(crystal_a.cell, crystal_b.cell)
+end
+function are_compatible_lattices(cell::Matrix, crystal::Crystal; kwargs...)
+    are_compatible_lattices(cell, crystal.cell)
+end
+"""
+    are_compatible_lattices(lattices...)
 
 True if the lattices are mathematically equivalent. Two lattices are equivalent if they
 represent the same periodicity. In practice, this means the two lattices have the same
 volume, and their cell vectors are integer linear combinations of one another.
-"""
-function are_compatible_lattices(a::Matrix, b::Matrix)
-    isinteger(inv(a) * b) && volume(a) ≈ volume(b)
+
+# Parameters
+
+* `lattices::Vararg{Union{Matrix, Crystal}}`: Any number of lattices
+* `digits::Integer`: when checking the cells are integer co-linear, the product ``A^{-1}B``
+  is first rounded to this number of digits
+* `rtol::Real`: unitless relative tolerance when checking the volumes correspond
+* `atol::Real`: unitless absolute tolerance when checking the volumes correspond
+
+# Examples
+
+```jldoctest
+using Crystals, Unitful
+crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u"nm")
+cells = Matrix{Int64}[eye(3)]
+while length(cells) < 5
+    cell = rand(-5:5, (3, 3))
+    volume(cell) == 1 && push!(cells, cell)
 end
-are_compatible_lattices(a::Crystal, b::Matrix) = are_compatible_lattices(a.cell, b)
-are_compatible_lattices(a::Crystal, b::Crystal) = are_compatible_lattices(a.cell, b.cell)
-are_compatible_lattices(a::Matrix, b::Crystal) = are_compatible_lattices(a, b.cell)
-function are_compatible_lattices(a::Crystal, other::Vararg{Crystal})
-    for u in other
-        if !are_compatible_lattices(a.cell, u.cell)
-            return false
-        end
+lattices = [crystal.cell * c for c in cells]
+are_compatible_lattices(crystal, lattices...)
+
+# output
+true
+```
+"""
+function are_compatible_lattices(lattices::Vararg{Union{Matrix, Crystal}})
+    if length(lattices) < 2
+        return true
     end
-    true
+    all(are_compatible_lattices(lattices[1], u) for u in lattices[2:end])
 end
 
 
@@ -579,7 +632,7 @@ end
 """
     $(SIGNATURES)
 
-Rounds the cell and position of a crystal. See `round` for possible parameters.
+Rounds the cell and positions of a crystal. See `round` for possible parameters.
 """
 function round!{T, D, U, TT, DD, UU}(crystal::Crystal{T, D, U, Quantity{TT, DD, UU}},
                                      args...)
@@ -598,7 +651,28 @@ end
 """
     $(SIGNATURES)
 
-Rounds the cell and position of a crystal. See `round` for possible parameters.
+Rounds the cell and positions of a crystal. See `Base.round` for possible parameters.
+
+# Examples
+
+```jldoctest
+using Crystals
+crystal = Crystal([0 0.501 0.501; 0.496 0.001 0.497; 0.497 0.497 0]u"nm",
+                  position=[0.001, -0.001, -0.001]u"nm",
+                  position=[0.25, 0.251, -0.247]u"nm")
+round(crystal, 2)
+
+# output
+
+cell(nm):
+  0.0 0.5 0.5
+  0.5 0.0 0.5
+  0.5 0.5 0.0
+│ Atom │ cartesian         │
+├──────┼───────────────────┤
+│ 1    │ (0.0,-0.0,-0.0)   │
+│ 2    │ (0.25,0.25,-0.25) │
+```
 """
 Base.round(crystal::Crystal, args...) = round!(deepcopy(crystal), args...)
 

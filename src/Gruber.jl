@@ -206,7 +206,9 @@ end
 
 Determines a unique cartesian cell equivalent to the input, with the shortest
 possible vectors and squarest angles. For an explanation of the parameters, see
-`gruber`.
+`gruber`. In practice, this function computes the cell-parameters of a `gruber` cell and
+then reconstructs the cell matrix. Hence, the result should be quite unique for any lattice
+representation, including any rotation of the underlying cartesian coordinates.
 """
 niggly(cell::Matrix, kwargs...) = cell_parameters(cell_parameters(gruber(cell; kwargs...)))
 

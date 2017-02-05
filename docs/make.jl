@@ -11,5 +11,6 @@ makedocs(
                      "Home" => "index.md",
                      "Basic Usage" => "basic.md",
                      "Cartesian and Fractional Coordinates" => "cartesian.md",
+                     "API Catalogue" => "methods.md",
                     ]
         )

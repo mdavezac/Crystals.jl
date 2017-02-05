@@ -1,4 +1,5 @@
 module SpaceGroup
+using DocStringExtensions
 export point_group, is_primitive, primitive, space_group
 
 using Crystals.Constants: default_tolerance
@@ -84,7 +85,7 @@ function point_group{T <: Number}(cell::AbstractMatrix{T};
 end
 
 function point_group{T, D, U}(cell::AbstractMatrix{Quantity{T, D, U}};
-                                         tolerance::Real=default_tolerance)
+                              tolerance::Real=default_tolerance)
     point_group(ustrip(cell), tolerance=tolerance)
 end
 
@@ -160,7 +161,7 @@ species, where a species can be defined by more than one input columns.
 """
 function species_ids(properties::AbstractDataFrame, cols::AbstractVector{Symbol})
     if length(cols) == 0
-        return Vector{Int64}(1:nrow(properties))
+        return ones(Int64, nrow(properties))
     end
     props = copy(properties)
     row_ids_name = Symbol("row_" * prod((string(u) for u in names(properties))))
@@ -303,9 +304,7 @@ function primitive_impl(cell::AbstractMatrix,
     new_cell, indices
 end
 
-"""
-Computes space-group operations
-"""
+""" Computes space-group operations """
 function space_group_impl(cell::AbstractMatrix,
                           cartesian::AbstractMatrix,
                           species::AbstractVector;
@@ -351,6 +350,15 @@ function space_group_impl(cell::AbstractMatrix,
     [u for u in result]
 end
 
+"""
+    $(SIGNATURES)
+
+Computes the space-group operations of a crystal. By default, all atomic properties are
+considered when determining whether atomic sites are related by symmetry. However, it is
+possible to specify a subset of atomic properties. An empty subset of atomic properties
+implies that all atoms sites are equivalent. It is also possible to specify an array of
+integers, serving as labels for each atomic site.
+"""
 function space_group(crystal::Crystal; kwargs...)
     space_group(crystal, names(crystal.properties); kwargs...)
 end
@@ -359,6 +367,17 @@ function space_group(crystal::Crystal, cols::Union{Symbol, AbstractVector{Symbol
     const species = species_ids(nrow(crystal), crystal.properties, cols)
     space_group(crystal.cell, crystal[:position], species; kwargs...)
 end
+function space_group(crystal::Crystal, species::AbstractVector{Int64}; kwargs...)
+    if length(species) ≠ nrow(crystal)
+        Log.error("The number of species and the number of atomic sites do not match")
+    end
+    space_group(crystal.cell, crystal[:position], species; kwargs...)
+end
+"""
+    $(SIGNATURES)
+
+    Computes the space-group of a crystal specified using standard Julia types.
+"""
 function space_group(cell::AbstractMatrix,
                      positions::AbstractMatrix,
                      species::AbstractVector;

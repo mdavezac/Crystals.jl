@@ -2,7 +2,7 @@ module Crystals
 using Unitful
 export @u_str
 
-export Crystal, is_fractional, volume, round!
+export Crystal, is_fractional, volume, round!, are_compatible_lattices
 export eachatom
 export smith_normal_form
 export gruber, niggly
@@ -44,8 +44,17 @@ include("SpaceGroup.jl")
 using .SpaceGroup
 
 module Lattices
+  using DocStringExtensions
   using Unitful
   using Crystals.Structures.Crystal
+
+  @template DEFAULT =
+    """
+        $(SIGNATURES)
+
+    $(DOCSTRING)
+    """
+
   include("Bravais.jl")
   include("Binary.jl")
   include("A2BX4.jl")

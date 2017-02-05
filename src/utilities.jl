@@ -255,8 +255,7 @@ typealias CellParameters @NT(a, b, c, α, β, γ)
                     α::Quantity=(π/2)u"rad", β::Quantity=(π/2)u"rad",
                     γ::Quantity=(π/2)u"rad")
 
-Computes cell from input cell parameters [a, b, c, α, β, γ].  α, β, γ are in
-radian.
+Computes the cell matrix from the cell parameters [a, b, c, α, β, γ].
 """
 function cell_parameters(a::Quantity, b::Quantity, c::Quantity,
                          α::Quantity=(π/2)u"rad", β::Quantity=(π/2)u"rad",
@@ -277,7 +276,7 @@ cell_parameters(cp::CellParameters) = cell_parameters(cp...)
     cell_parameters(cell::AbstractMatrix)
     cell_parameters(cell::Crystal)
 
-Parameters (a, b, c, α, β, γ) of the input cell.
+Parameters (a, b, c, α, β, γ) of the input cell returned in a named tuple.
 """
 function cell_parameters(cell::AbstractMatrix)
     G = transpose(cell) * cell

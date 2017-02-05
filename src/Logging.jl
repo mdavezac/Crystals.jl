@@ -2,6 +2,7 @@
 module Log
 export debug, info, warn, error, log, configure, set_log_level
 
+using DocStringExtensions
 import Lumberjack
 
 crystal_log = Lumberjack.LumberMill()
@@ -28,7 +29,12 @@ log(mode::Symbol, args::Dict) = log(crystal_log, string(mode), args)
 
 configure(; kwargs...) = Lumberjack.configure(crystal_log; kwargs...)
 
-""" Modifies log-level of all trucks in Crystals logs """
+"""
+    $(SIGNATURES)
+
+Modifies log-level of all "trucks" in Crystals logs. The input should be one of "debug",
+"info", "warn", "error", from least to most verbose.
+"""
 function set_log_level(level::AbstractString="error")
     for (name, truck) in crystal_log.timber_trucks
         Lumberjack.configure(truck, mode=level)

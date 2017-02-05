@@ -103,14 +103,7 @@ cell(nm):
 ```
 
 
-## Misc
-
-The function `is_fractional` can tell us programmatically whether a structure is fractional
-or cartesian.
-
-```@docs
-is_fractional
-```
+## Accessing and Modifying specific components
 
 Apart from `:cartesian` and `:fractional`, there are three other special column names that
 ease access to specific atomic properties. `:x`, `:y`, `:z` will return an array
