@@ -1,6 +1,6 @@
 module Structures
+using DocStringExtensions
 export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices, round!
-# export cartesian, fractional
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
 using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
@@ -10,6 +10,7 @@ import Unitful
 import DataFrames
 using Unitful: dimension, unit
 
+""" Reserved column names for special input and output """
 const RESERVED_COLUMNS = [:position, :fractional, :cartesian, :x, :y, :z]
 
 """ Top type node for Crystals """
@@ -17,7 +18,7 @@ abstract AbstractCrystal
 
 typealias RowIndices{T <: Integer} Union{T, AbstractVector{T}, Range{T}, Colon}
 
-""" Crystal that lies in a space with physical units """
+""" Describe a crystalline structure """
 type Crystal{T <: Number, D, U, P <: Number} <: AbstractCrystal
     """ Periodicity of the crystal structure """
     cell::Matrix{Quantity{T, D, U}}
@@ -84,6 +85,11 @@ end
 Unitful.unit(crystal::Crystal) = typeof(crystal).parameters[3]()
 Unitful.dimension(crystal::Crystal) = typeof(crystal).parameters[2]()
 Base.length(crystal::Crystal) = size(crystal.positions, 2)
+"""
+    $(SIGNATURES)
+
+True if the crystal structure is fractional.
+"""
 is_fractional(crystal::Crystal) = is_fractional(typeof(crystal))
 is_fractional{T <: Crystal}(::Type{T}) = !(T.parameters[end] <: Quantity)
 fractional_trait(crystal::Crystal) = fractional_trait(typeof(crystal))
@@ -97,7 +103,11 @@ function volume{T, D, U}(cell::Matrix{Quantity{T, D, U}})
 end
 volume(crystal::Crystal) = volume(crystal.cell)
 
-""" True if the lattices are mathematically equivalent """
+"""
+    $(SIGNATURES)
+
+True if the lattices are mathematically equivalent.
+"""
 function are_compatible_lattices(a::Matrix, b::Matrix)
     isinteger(inv(a) * b) && volume(a) ≈ volume(b)
 end
@@ -135,28 +145,6 @@ function position_for_crystal(crystal::Crystal, other::Crystal)
     position_for_crystal(crystal, position_for_crystal(Val{:cartesian}(), other))
 end
 
-# """
-#     cartesian(cell::AbstractMatrix, positions::AbstractArray)
-#     cartesian(crystal::Crystal)
-#
-# No-op returning positions if already in cartesian coordinates (unitful) or transforms them
-# if in fractional coordinates (unitless).
-# """
-# cartesian(c::AbstractMatrix, p::AbstractArray) = position_for_crystal(Val{:cartesian}, c, p)
-# cartesian(crystal::Crystal) = cartesian(c.cell, c.positions)
-# """
-#     fractional(cell::AbstractMatrix, positions::AbstractArray)
-#     fractional(crystal::Crystal)
-#
-# No-op returning positions if already in fractional coordinates (unitful) or transforms them
-# if in cartesian coordinates (unitless).
-# """
-# function fractional(c::AbstractMatrix, p::AbstractArray)
-#     position_for_crystal(Val{:fractional}, c, p)
-# end
-# fractional(crystal::Crystal) = fractional(c.cell, c.positions)
-
-
 @inline _is_not_position(s::Symbol) = :position ≠ s
 @inline _is_not_position(s::AbstractVector{Symbol}) = :position ∉ s
 
@@ -168,12 +156,39 @@ function Base.show(io::IO, crystal::Crystal)
         println(io)
     end
     with_pos = copy(crystal.properties)
-    const name = is_fractional(crystal) ? :fractional : :position
+    const name = is_fractional(crystal) ? :fractional : :cartesian
     const positions = [tuple(ustrip(crystal.positions[:, i])...) for i in 1:length(crystal)]
     show(io, hcat(DataFrame(Any[positions], [name]), crystal.properties),
          false, :Atom, false)
 end
 
+"""
+    $(SIGNATURES)
+
+Appends an atom to a crystal structure. The position of the atom is a necessary
+argument, whether in cartesian or in fractional coordinates. If keyword arguments are
+present, then they represent atomic properties for the atom being added. Properties that
+are not explicitly given are set to `NA`. Similarly, new properties that were not
+present in the crystal structure previously are `NA` except for the newly added atom.
+
+# Examples
+
+```jldocset
+push!(crystal, [10, 20]u"nm", species="B", μ=1)
+crystal
+
+# output
+cell(m):
+1000.0 0.0
+0.0 1000.0
+│ Atom │ position        │ species │ label │ μ  │
+├──────┼─────────────────┼─────────┼───────┼────┤
+│ 1    │ (1.0,1.0)       │ "Al"    │ +     │ NA │
+│ 2    │ (2.0,3.0)       │ "O"     │ -     │ NA │
+│ 3    │ (4.0,5.0)       │ "O"     │ -     │ NA │
+│ 4    │ (1.0e-8,2.0e-8) │ "B"     │ NA    │ 1  │
+```
+"""
 function Base.push!(crystal::Crystal, position::Vector; kwargs...)
     if length(position) ≠ size(crystal.cell, 1)
         Log.error("Dimensionality of input position and crystal do not match")
@@ -185,7 +200,9 @@ function Base.push!(crystal::Crystal, position::Vector; kwargs...)
     missing = Tuple{Symbol, Any}[]
     const colnames = names(crystal.properties)
     for (name, value) in kwargs
-        if name ∉ colnames
+        if name ∈ RESERVED_COLUMNS
+            Log.error("$(name) is a reserved name and cannot be used in push!")
+        elseif name ∉ colnames
             push!(missing, (name, value))
         else
             row[index(crystal.properties)[name]] = value
@@ -383,6 +400,12 @@ end
 function Base.setindex!(crystal::Crystal, v::Any, row::Any, col::Symbol)
     if col == :position
         setindex!(crystal.positions, position_for_crystal(crystal, v), :, row)
+    elseif col == :x
+        setindex!(crystal.positions, v, 1, row)
+    elseif col == :y
+        setindex!(crystal.positions, v, 2, row)
+    elseif col == :z
+        setindex!(crystal.positions, v, 3, row)
     else
         setindex!(crystal.properties, v, row, col)
     end
@@ -394,6 +417,21 @@ function Base.setindex!(crystal::Crystal, v::Any, col::Symbol)
             Log.error("Input has incorrect size")
         end
         crystal.positions = position_for_crystal(crystal, v)
+    elseif col == :x
+        if size(v) ≠ size(crystal.positions)
+            Log.error("Input has incorrect size")
+        end
+        crystal.positions[1, :] = position_for_crystal(crystal, v)
+    elseif col == :y
+        if size(v) ≠ size(crystal.positions)
+            Log.error("Input has incorrect size")
+        end
+        crystal.positions[2, :] = position_for_crystal(crystal, v)
+    elseif col == :z
+        if size(v) ≠ size(crystal.positions)
+            Log.error("Input has incorrect size")
+        end
+        crystal.positions[3, :] = position_for_crystal(crystal, v)
     else
         setindex!(crystal.properties, v, col)
     end
@@ -427,6 +465,12 @@ end
 
 Base.setindex!(crys::Crystal, v::Any, ::Colon, col::Symbol) = Base.setindex!(crys, v, col)
 
+"""
+    Base.delete!(crystal::Crystal, col::Symbol)
+    Base.delete!(crystal::Crystal, col::AbstractVector{Symbol})
+
+Deletes one or more atomic property. Positions cannot be deleted.
+"""
 function Base.delete!(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol}})
     if !_is_not_position(col)
         Log.error("Cannot delete position column from a structure")
@@ -435,15 +479,34 @@ function Base.delete!(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol
     crystal
 end
 
+"""
+    Base.delete!(crystal::Crystal, ::Colon)
+
+Deletes all atomic properties except for positions.
+"""
 Base.delete!(crystal::Crystal, ::Colon) = (empty!(crystal.properties); crystal)
 
 Base.setindex!(crystal::Crystal, ::Void, col::Any) = delete!(crystal, col)
 
+"""
+    $(SIGNATURES)
+
+Deletes all atomic sites, both properties and positions.
+"""
 function Base.empty!(crystal::Crystal)
     empty!(crystal.properties)
     crystal.positions = crystal.positions[:, 1:0]
 end
 
+"""
+    deleterows!(crystal::Crystal, rows::Integer)
+    deleterows!(crystal::Crystal, rows::AbstractVector{Integer})
+    deleterows!{T <: Integer}(crystal::Crystal, rows::Range{T})
+    deleterows!(crystal::Crystal, rows::Colon)
+
+Deletes one (single integer), a few (sequence or range), or all (colon) atoms in the
+structure.
+"""
 function DataFrames.deleterows!(crystal::Crystal, row::Integer)
     deleterows!(crystal.properties, row)
     rows = filter(i -> i ≠ row, 1:nrow(crystal))
@@ -457,7 +520,17 @@ function DataFrames.deleterows!(crystal::Crystal, rows::RowIndices)
 end
 
 """
-`vcat(crys::Crystal, dfs::AbstractDataFrame...)`
+    delete!(crystal::Crystal, rows::Integer)
+    delete!(crystal::Crystal, rows::AbstractVector{Integer})
+    delete!{T <: Integer}(crystal::Crystal, rows::Range{T})
+    delete!(crystal::Crystal, rows::Colon)
+
+Alias for `deleterows`[@ref].
+"""
+delete!(crystal::Crystal, rows::RowIndices) = deleterows!(crystal, rows)
+
+"""
+    $(SIGNATURES)
 
 Concatenates crystals together. The lattices must be compatible.
 """
@@ -469,7 +542,21 @@ function Base.vcat(crystal::Crystal, other::Vararg{Crystal})
 end
 Base.vcat(crystal::Crystal) = crystal
 
-function Base.append!(crystal::Crystal, other::Vararg{Crystal})
+"""
+    $(SIGNATURES)
+
+Appends one or more crystal structure to the first structure. Unless `check_periodicity` is
+`false`, the structures must have the exact same periodicity. An error will result
+otherwise.
+"""
+function Base.append!(crystal::Crystal, other::Vararg{Crystal}; check_periodicity=true)
+    if check_periodicity
+        for (i, u) in enumerate(other)
+            if !are_compatible_lattices(crystal.cell, u.cell)
+                Log.error("Crystal structure $i does not have the same periodicity")
+            end
+        end
+    end
     crystal.positions = hcat(crystal.positions,
                              (position_for_crystal(crystal, u) for u in other)...)
     append!(crystal.properties, (u.properties for u in other)...)
@@ -477,7 +564,7 @@ end
 
 
 """
-round!(crystal::Crystal, args...)
+    $(SIGNATURES)
 
 Rounds the cell and position of a crystal. See `round` for possible parameters.
 """
@@ -496,7 +583,7 @@ function round!{T, D, U, TT}(crystal::Crystal{T, D, U, TT}, args...)
 end
 
 """
-round(crystal::Crystal, args...)
+    $(SIGNATURES)
 
 Rounds the cell and position of a crystal. See `round` for possible parameters.
 """
