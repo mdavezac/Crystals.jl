@@ -18,7 +18,7 @@ makedocs(
 deploydocs(
     repo = "github.com/mdavezac/Crystals.jl.git",
     target = "build",
-    julia = "0.5",
+    julia = "release",
     deps = nothing,
     make = nothing,
 )

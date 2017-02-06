@@ -3,6 +3,10 @@
 
 # Crystals
 
+The audience for this package should have a need or a want to play with relatively small
+(DFT/GW scale) crystalline structure from an atomistic point of view. Its purpose is to
+allow users to build and investigate crystal structures programmatically.
+
 A `Crystal` declares an atomic crystalline structure, e.g an inifinite periodic
 arrangement of atoms. The constructor takes at the very least an `n` by `n` array defining
 the periodicity of the crystal, i.e. the crystal cell. The cell must have physical units
