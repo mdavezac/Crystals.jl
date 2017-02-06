@@ -32,12 +32,14 @@ crystal = Crystal(eye(2)u"km",
 ```
 
 Note that the positions form an `n` by `N` array where `N` is the number of atoms. This is
-the logical mathematical format if when performing matrix operations on the positions.
+the logical mathematical format when performing matrix operations on the positions.
 However, from an input point of view, it is easier to think one atom at at time, rather than
-one coordinate (and all atoms) at a time. Hence the transpose.
+one coordinate (and all atoms) at a time. Hence the transpose.Similarly, the input-cell is
+given in matrix format, not in the vector column format of many DFT codes. Do look at the
+tests and at the sample `Lattices` for other input formats.
 
 Access to the crystal cell happens via `.` call, `crystal.cell`. Atomic properties can be
 accessed and modified through the square bracket operator.
 
 Several methods are available to manipulate the crystal more extensively (`supercell`,
-`primitive`, `space_group`, etc..).
+`primitive`, `space_group`, `hart_forcade`, etc..).

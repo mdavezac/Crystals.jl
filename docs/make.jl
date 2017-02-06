@@ -3,7 +3,7 @@ using Crystals
 makedocs(
          modules = [Crystals],
          clean = true,
-         # format = :html,
+         format = :html,
          sitename = "Crystals.jl",
          authors = "Mayeul d'Avezac",
          analytics = "UA-89508993-1",
