@@ -239,15 +239,21 @@ present in the crystal structure previously are `NA` except for the newly added 
 
 # Examples
 
-```jldocset
+```jldoctest
+using Crystals
+crystal = Crystal(eye(2)u"km",
+                  tpositions=[1 1; 2 3; 4 5]u"m",
+                  species=["Al", "O", "O"],
+                  label=[:+, :-, :-])
 push!(crystal, [10, 20]u"nm", species="B", μ=1)
 crystal
 
-# output
+# output
+
 cell(m):
-1000.0 0.0
-0.0 1000.0
-│ Atom │ position        │ species │ label │ μ  │
+  1000.0 0.0
+  0.0 1000.0
+│ Atom │ Cartesian       │ species │ label │ μ  │
 ├──────┼─────────────────┼─────────┼───────┼────┤
 │ 1    │ (1.0,1.0)       │ "Al"    │ +     │ NA │
 │ 2    │ (2.0,3.0)       │ "O"     │ -     │ NA │

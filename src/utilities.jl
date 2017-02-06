@@ -41,13 +41,13 @@ transform and the quotient.
 
 # Examples
 
-```jldocset
+```jldoctest
 using Crystals, Unitful
 fcc = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
 supercell = [0 2 2; 0 -4 2; -1 0 -2]
 ht = hart_forcade(fcc, fcc * supercell)
-display(ht)
 
+println(ht)
 println("Positions in supercell:")
 for index in CartesianRange((ht.quotient...))
     position = inv(ht.transform) * [index[u] for u in eachindex(ht.quotient)]

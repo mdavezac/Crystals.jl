@@ -12,40 +12,36 @@ the simple expedience of *not* specifying actual units.
 CurrentModule = Crystals
 DocTestSetup = quote
     using Crystals
+    using Unitful
 end
 ```
-```jldocset
+```jldoctest
 frac_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u"nm",
                        position=[0, 0, 0],
                        position=[0.25, 0.25, 0.25])
 @assert frac_crystal[:position] === frac_crystal[:fractional]
 @assert frac_crystal[:cartesian] ≈ frac_crystal.cell * frac_crystal[:fractional]
-display(frac_crystal[:cartesian])
+units = unit(eltype(frac_crystal[:cartesian]))
+println(ustrip(frac_crystal[:cartesian]), " (", units, ")")
 
 # output
-3×2 Array{Quantity{Float64, Dimensions:{𝐋}, Units:{nm}},2}:
- 0.0 nm  1.05 nm
- 0.0 nm  1.05 nm
- 0.0 nm  1.05 nm
+[0.0 1.05; 0.0 1.05; 0.0 1.05] (nm)
 ```
 
 Note that querying `:position` returns fractional coordinates. If we create a structure with
 Cartesian coordinates instead -- by calling the constructor with positions that have units
 -- then querying `:position` would return the Cartesian coordinates.
 
-```jldocset
+```jldoctest
 cart_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u"nm",
                        position=[0, 0, 0]u"nm",
                        position=[1.05, 1.05, 1.05]u"nm")
-@assert cart_crystal[:position] === cart_crystal[:fractional]
+@assert cart_crystal[:position] === cart_crystal[:cartesian]
 @assert cart_crystal[:fractional] ≈ inv(cart_crystal.cell) * cart_crystal[:cartesian]
-display(cart_crystal[:fractional])
+println(cart_crystal[:fractional])
 
 # output
-3×2 Array{Float64,2}:
-  0.0  1.05
-  0.0  1.05
-  0.0  1.05
+[0.0 0.25; 0.0 0.25; 0.0 0.25]
 ```
 
 Of course, in either case, we can access either `:cartesian` or `:fractional` coordinates
@@ -55,7 +51,7 @@ multiplication (and possibly computing the inverse of a matrix). To obtain a spe
 of crystal from any other crystal, one can simply use the bracket operator:
 
 
-```jldocset
+```jldoctest
 crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u"nm",
                   position=[0, 0, 0]u"nm",
                   position=[1.05, 1.05, 1.05]u"nm",
@@ -84,7 +80,7 @@ Cartesian. If the input has physical units, then it is Cartesian. If it doesn't,
 fractional. The appropriate transformation is applied before setting the position in the
 crystal.
 
-```jldocset
+```jldoctest
 frac_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u"nm",
                        position=[0, 0, 0],
                        position=[0.25, 0.25, 0.25])
