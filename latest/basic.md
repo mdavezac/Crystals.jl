@@ -143,7 +143,7 @@ cell(m):
 ```
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L231-L257' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L231-L257' class='documenter-source'>source</a><br>
 
 <a id='Base.append!' href='#Base.append!'>#</a>
 **`Base.append!`** &mdash; *Function*.
@@ -158,7 +158,7 @@ append!(crystal, other; check_periodicity)
 Appends one or more crystal structure to the first structure. Unless `check_periodicity` is `false`, the structures must have the exact same periodicity. An error will result otherwise.
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L617-L623' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L617-L623' class='documenter-source'>source</a><br>
 
 <a id='Base.vcat' href='#Base.vcat'>#</a>
 **`Base.vcat`** &mdash; *Function*.
@@ -173,7 +173,7 @@ vcat(crystal, other; check_periodicity)
 Concatenates crystals together. The lattices must be compatible.
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L601-L605' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L601-L605' class='documenter-source'>source</a><br>
 
 <a id='Base.delete!' href='#Base.delete!'>#</a>
 **`Base.delete!`** &mdash; *Function*.
@@ -188,7 +188,7 @@ Base.delete!(crystal::Crystal, col::AbstractVector{Symbol})
 Deletes one or more atomic property. Positions cannot be deleted.
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L537-L542' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L537-L542' class='documenter-source'>source</a><br>
 
 
 ```
@@ -198,7 +198,7 @@ Base.delete!(crystal::Crystal, ::Colon)
 Deletes all atomic properties except for positions.
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L551-L555' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L551-L555' class='documenter-source'>source</a><br>
 
 
 ```
@@ -211,7 +211,7 @@ delete!(crystal::Crystal, rows::Colon)
 Alias for `deleterows`[@ref].
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L591-L598' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L591-L598' class='documenter-source'>source</a><br>
 
 <a id='DataFrames.deleterows!' href='#DataFrames.deleterows!'>#</a>
 **`DataFrames.deleterows!`** &mdash; *Function*.
@@ -228,7 +228,7 @@ deleterows!(crystal::Crystal, rows::Colon)
 Deletes one (single integer), a few (sequence or range), or all (colon) atoms in the structure.
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L570-L578' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L570-L578' class='documenter-source'>source</a><br>
 
 <a id='Base.empty!' href='#Base.empty!'>#</a>
 **`Base.empty!`** &mdash; *Function*.
@@ -243,7 +243,7 @@ empty!(crystal)
 Deletes all atomic sites, both properties and positions.
 
 
-<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/7f715d66462d7db5977704035cf74211abd39dac/src/Structures.jl#L560-L564' class='documenter-source'>source</a><br>
+<a target='_blank' href='https://github.com/mdavezac/Crystals.jl/tree/4147a135af1c14a2789a037977c15dc2ce364118/src/Structures.jl#L560-L564' class='documenter-source'>source</a><br>
 
 
 !!! warning
