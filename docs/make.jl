@@ -14,3 +14,10 @@ makedocs(
                      "API Catalogue" => "methods.md",
                     ]
         )
+
+deploydocs(
+    repo = "github.com/mdavezac/Crystals.jl.git",
+    target = "build",
+    deps = nothing,
+    make = nothing,
+)

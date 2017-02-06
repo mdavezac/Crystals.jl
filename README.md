@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/mdavezac/Crystals.jl.svg?branch=master)](https://travis-ci.org/mdavezac/Crystals.jl)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://mdavezac.github.io/Crystals.jl/latest)
 
 # Crystals
 
