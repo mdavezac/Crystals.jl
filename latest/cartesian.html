@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Cartesian and Fractional Coordinates · Crystals.jl</title><script>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-89508993-1', 'auto');
+ga('send', 'pageview');
+</script><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/styles/default.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Ubuntu+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="assets/documenter.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="../versions.js"></script></head><body><nav class="toc"><h1>Crystals.jl</h1><form class="search" action="search.html"><select id="version-selector" onChange="window.location.href=this.value"><option value="#" selected="selected" disabled="disabled">Version</option></select><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="index.html">Home</a></li><li><a class="toctext" href="basic.html">Basic Usage</a></li><li class="current"><a class="toctext" href="cartesian.html">Cartesian and Fractional Coordinates</a><ul class="internal"><li><a class="toctext" href="#Creating-and-accessing-fractional-and-Cartesian-coordinates-1">Creating and accessing fractional and Cartesian coordinates</a></li><li><a class="toctext" href="#Setting-coordinates-from-fractional-or-Cartesian-inputs-1">Setting coordinates from fractional or Cartesian inputs</a></li><li><a class="toctext" href="#Accessing-and-Modifying-specific-components-1">Accessing and Modifying specific components</a></li></ul></li><li><a class="toctext" href="methods.html">API Catalogue</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="cartesian.html">Cartesian and Fractional Coordinates</a></li></ul><a class="edit-page" href="https://github.com/mdavezac/Crystals.jl/tree/36bd2e38398dd78ccd0588b8662c3d12ca9e0606/docs/src/cartesian.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/></header><p>Atomic positions can be initialized, modified, and accessed in Cartesian or fractional coordinates. Cartesian coordinates refer to <em>real world</em> positions in the same physical units as the crystal cell. Fractional coordinates however are in units <em>of</em> the crystal cell.</p><h2><a class="nav-anchor" id="Creating-and-accessing-fractional-and-Cartesian-coordinates-1" href="#Creating-and-accessing-fractional-and-Cartesian-coordinates-1">Creating and accessing fractional and Cartesian coordinates</a></h2><p>In the following, we create a crystal structure using fractional coordinates, through the simple expedience of <em>not</em> specifying actual units.</p><pre><code class="language-jldocset">frac_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u&quot;nm&quot;,
+                       position=[0, 0, 0],
+                       position=[0.25, 0.25, 0.25])
+@assert frac_crystal[:position] === frac_crystal[:fractional]
+@assert frac_crystal[:cartesian] ≈ frac_crystal.cell * frac_crystal[:fractional]
+display(frac_crystal[:cartesian])
+
+# output
+3×2 Array{Quantity{Float64, Dimensions:{𝐋}, Units:{nm}},2}:
+ 0.0 nm  1.05 nm
+ 0.0 nm  1.05 nm
+ 0.0 nm  1.05 nm</code></pre><p>Note that querying <code>:position</code> returns fractional coordinates. If we create a structure with Cartesian coordinates instead – by calling the constructor with positions that have units – then querying <code>:position</code> would return the Cartesian coordinates.</p><pre><code class="language-jldocset">cart_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u&quot;nm&quot;,
+                       position=[0, 0, 0]u&quot;nm&quot;,
+                       position=[1.05, 1.05, 1.05]u&quot;nm&quot;)
+@assert cart_crystal[:position] === cart_crystal[:fractional]
+@assert cart_crystal[:fractional] ≈ inv(cart_crystal.cell) * cart_crystal[:cartesian]
+display(cart_crystal[:fractional])
+
+# output
+3×2 Array{Float64,2}:
+  0.0  1.05
+  0.0  1.05
+  0.0  1.05</code></pre><p>Of course, in either case, we can access either <code>:cartesian</code> or <code>:fractional</code> coordinates through the relevant column name. However, depending on how the crystal was created, one of these calls will be essentially a no-op, and the other will involve a matrix-matrix multiplication (and possibly computing the inverse of a matrix). To obtain a specific kind of crystal from any other crystal, one can simply use the bracket operator:</p><pre><code class="language-jldocset">crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u&quot;nm&quot;,
+                  position=[0, 0, 0]u&quot;nm&quot;,
+                  position=[1.05, 1.05, 1.05]u&quot;nm&quot;,
+                  species=[&quot;Si&quot;, &quot;Si&quot;])
+crystal[[:fractional, :species]]
+
+# output
+cell(nm):
+  0.0 2.1 2.1
+  2.1 0.0 2.1
+  2.1 2.1 0.0
+│ Atom │ fractional       │ species │
+├──────┼──────────────────┼─────────┤
+│ 1    │ (0.0,0.0,0.0)    │ &quot;Si&quot;    │
+│ 2    │ (0.25,0.25,0.25) │ &quot;Si&quot;    │</code></pre><p>Note that the column name explicitly specifies <code>fractional</code>, as opposed to <code>cartesian</code>. This call (indeed, all bracket operator call) will always create a new instance of a <code>Crystal</code>, whether it is strictly needed or not.</p><h2><a class="nav-anchor" id="Setting-coordinates-from-fractional-or-Cartesian-inputs-1" href="#Setting-coordinates-from-fractional-or-Cartesian-inputs-1">Setting coordinates from fractional or Cartesian inputs</a></h2><p>When setting a position, it is not necessary to specify whether the input is fractional or Cartesian. If the input has physical units, then it is Cartesian. If it doesn&#39;t, then it is fractional. The appropriate transformation is applied before setting the position in the crystal.</p><pre><code class="language-jldocset">frac_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u&quot;nm&quot;,
+                       position=[0, 0, 0],
+                       position=[0.25, 0.25, 0.25])
+frac_crystal[2, :position] = [1, 1, 1]u&quot;nm&quot;
+frac_crystal
+
+# output
+cell(nm):
+  0.0 2.1 2.1
+  2.1 0.0 2.1
+  2.1 2.1 0.0
+│ Atom │ fractional                   │
+├──────┼──────────────────────────────┤
+│ 1    │ (0.0,0.0,0.0)                │
+│ 2    │ (0.238095,0.238095,0.238095) │</code></pre><h2><a class="nav-anchor" id="Accessing-and-Modifying-specific-components-1" href="#Accessing-and-Modifying-specific-components-1">Accessing and Modifying specific components</a></h2><p>Apart from <code>:cartesian</code> and <code>:fractional</code>, there are three other special column names that ease access to specific atomic properties. <code>:x</code>, <code>:y</code>, <code>:z</code> will return an array representing the corresponding coordinate, in the same system – Cartesian or fractional – as the crystal (and as <code>:position</code>). <code>:x</code>, <code>:y</code>, <code>:z</code>  can be used to set a specific coordinate as well. Only three such special names are provided. </p><pre><code class="language-julia">crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u&quot;nm&quot;,
+                  position=[0, 0, 0],
+                  position=[0.25, 0.27, 0.25])
+
+println(&quot;Y coordinate: &quot;, crystal[2, :y])
+crystal[2, :y] = 0.25
+crystal
+
+# output
+Y coordinate: 0.27
+cell(nm):
+  0.0 2.1 2.1
+  2.1 0.0 2.1
+  2.1 2.1 0.0
+│ Atom │ fractional       │
+├──────┼──────────────────┤
+│ 1    │ (0.0,0.0,0.0)    │
+│ 2    │ (0.25,0.25,0.25) │</code></pre><footer><hr/><a class="previous" href="basic.html"><span class="direction">Previous</span><span class="title">Basic Usage</span></a><a class="next" href="methods.html"><span class="direction">Next</span><span class="title">API Catalogue</span></a></footer></article></body></html>
