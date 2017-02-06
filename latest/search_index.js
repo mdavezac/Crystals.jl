@@ -45,7 +45,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Basic Usage",
     "title": "Base.push!",
     "category": "Function",
-    "text": "push!(crystal, position; kwargs...)\n\n\nAppends an atom to a crystal structure. The position of the atom is a necessary argument, whether in Cartesian or in fractional coordinates. If keyword arguments are present, then they represent atomic properties for the atom being added. Properties that are not explicitly given are set to NA. Similarly, new properties that were not present in the crystal structure previously are NA except for the newly added atom.\n\nExamples\n\npush!(crystal, [10, 20]u\"nm\", species=\"B\", μ=1)\ncrystal\n\n# output\ncell(m):\n1000.0 0.0\n0.0 1000.0\n│ Atom │ position        │ species │ label │ μ  │\n├──────┼─────────────────┼─────────┼───────┼────┤\n│ 1    │ (1.0,1.0)       │ \"Al\"    │ +     │ NA │\n│ 2    │ (2.0,3.0)       │ \"O\"     │ -     │ NA │\n│ 3    │ (4.0,5.0)       │ \"O\"     │ -     │ NA │\n│ 4    │ (1.0e-8,2.0e-8) │ \"B\"     │ NA    │ 1  │\n\n\n\n"
+    "text": "push!(crystal, position; kwargs...)\n\n\nAppends an atom to a crystal structure. The position of the atom is a necessary argument, whether in Cartesian or in fractional coordinates. If keyword arguments are present, then they represent atomic properties for the atom being added. Properties that are not explicitly given are set to NA. Similarly, new properties that were not present in the crystal structure previously are NA except for the newly added atom.\n\nExamples\n\nusing Crystals\ncrystal = Crystal(eye(2)u\"km\",\n                  tpositions=[1 1; 2 3; 4 5]u\"m\",\n                  species=[\"Al\", \"O\", \"O\"],\n                  label=[:+, :-, :-])\npush!(crystal, [10, 20]u\"nm\", species=\"B\", μ=1)\ncrystal\n\n# output\n\ncell(m):\n  1000.0 0.0\n  0.0 1000.0\n│ Atom │ Cartesian       │ species │ label │ μ  │\n├──────┼─────────────────┼─────────┼───────┼────┤\n│ 1    │ (1.0,1.0)       │ \"Al\"    │ +     │ NA │\n│ 2    │ (2.0,3.0)       │ \"O\"     │ -     │ NA │\n│ 3    │ (4.0,5.0)       │ \"O\"     │ -     │ NA │\n│ 4    │ (1.0e-8,2.0e-8) │ \"B\"     │ NA    │ 1  │\n\n\n\n"
 },
 
 {
@@ -117,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Cartesian and Fractional Coordinates",
     "title": "Creating and accessing fractional and Cartesian coordinates",
     "category": "section",
-    "text": "In the following, we create a crystal structure using fractional coordinates, through the simple expedience of not specifying actual units.CurrentModule = Crystals\nDocTestSetup = quote\n    using Crystals\nendfrac_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u\"nm\",\n                       position=[0, 0, 0],\n                       position=[0.25, 0.25, 0.25])\n@assert frac_crystal[:position] === frac_crystal[:fractional]\n@assert frac_crystal[:cartesian] ≈ frac_crystal.cell * frac_crystal[:fractional]\ndisplay(frac_crystal[:cartesian])\n\n# output\n3×2 Array{Quantity{Float64, Dimensions:{𝐋}, Units:{nm}},2}:\n 0.0 nm  1.05 nm\n 0.0 nm  1.05 nm\n 0.0 nm  1.05 nmNote that querying :position returns fractional coordinates. If we create a structure with Cartesian coordinates instead – by calling the constructor with positions that have units – then querying :position would return the Cartesian coordinates.cart_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u\"nm\",\n                       position=[0, 0, 0]u\"nm\",\n                       position=[1.05, 1.05, 1.05]u\"nm\")\n@assert cart_crystal[:position] === cart_crystal[:fractional]\n@assert cart_crystal[:fractional] ≈ inv(cart_crystal.cell) * cart_crystal[:cartesian]\ndisplay(cart_crystal[:fractional])\n\n# output\n3×2 Array{Float64,2}:\n  0.0  1.05\n  0.0  1.05\n  0.0  1.05Of course, in either case, we can access either :cartesian or :fractional coordinates through the relevant column name. However, depending on how the crystal was created, one of these calls will be essentially a no-op, and the other will involve a matrix-matrix multiplication (and possibly computing the inverse of a matrix). To obtain a specific kind of crystal from any other crystal, one can simply use the bracket operator:crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u\"nm\",\n                  position=[0, 0, 0]u\"nm\",\n                  position=[1.05, 1.05, 1.05]u\"nm\",\n                  species=[\"Si\", \"Si\"])\ncrystal[[:fractional, :species]]\n\n# output\ncell(nm):\n  0.0 2.1 2.1\n  2.1 0.0 2.1\n  2.1 2.1 0.0\n│ Atom │ fractional       │ species │\n├──────┼──────────────────┼─────────┤\n│ 1    │ (0.0,0.0,0.0)    │ \"Si\"    │\n│ 2    │ (0.25,0.25,0.25) │ \"Si\"    │Note that the column name explicitly specifies fractional, as opposed to cartesian. This call (indeed, all bracket operator call) will always create a new instance of a Crystal, whether it is strictly needed or not."
+    "text": "In the following, we create a crystal structure using fractional coordinates, through the simple expedience of not specifying actual units.CurrentModule = Crystals\nDocTestSetup = quote\n    using Crystals\n    using Unitful\nendfrac_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u\"nm\",\n                       position=[0, 0, 0],\n                       position=[0.25, 0.25, 0.25])\n@assert frac_crystal[:position] === frac_crystal[:fractional]\n@assert frac_crystal[:cartesian] ≈ frac_crystal.cell * frac_crystal[:fractional]\nunits = unit(eltype(frac_crystal[:cartesian]))\nprintln(ustrip(frac_crystal[:cartesian]), \" (\", units, \")\")\n\n# output\n[0.0 1.05; 0.0 1.05; 0.0 1.05] (nm)Note that querying :position returns fractional coordinates. If we create a structure with Cartesian coordinates instead – by calling the constructor with positions that have units – then querying :position would return the Cartesian coordinates.cart_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u\"nm\",\n                       position=[0, 0, 0]u\"nm\",\n                       position=[1.05, 1.05, 1.05]u\"nm\")\n@assert cart_crystal[:position] === cart_crystal[:cartesian]\n@assert cart_crystal[:fractional] ≈ inv(cart_crystal.cell) * cart_crystal[:cartesian]\nprintln(cart_crystal[:fractional])\n\n# output\n[0.0 0.25; 0.0 0.25; 0.0 0.25]Of course, in either case, we can access either :cartesian or :fractional coordinates through the relevant column name. However, depending on how the crystal was created, one of these calls will be essentially a no-op, and the other will involve a matrix-matrix multiplication (and possibly computing the inverse of a matrix). To obtain a specific kind of crystal from any other crystal, one can simply use the bracket operator:crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u\"nm\",\n                  position=[0, 0, 0]u\"nm\",\n                  position=[1.05, 1.05, 1.05]u\"nm\",\n                  species=[\"Si\", \"Si\"])\ncrystal[[:fractional, :species]]\n\n# output\ncell(nm):\n  0.0 2.1 2.1\n  2.1 0.0 2.1\n  2.1 2.1 0.0\n│ Atom │ fractional       │ species │\n├──────┼──────────────────┼─────────┤\n│ 1    │ (0.0,0.0,0.0)    │ \"Si\"    │\n│ 2    │ (0.25,0.25,0.25) │ \"Si\"    │Note that the column name explicitly specifies fractional, as opposed to cartesian. This call (indeed, all bracket operator call) will always create a new instance of a Crystal, whether it is strictly needed or not."
 },
 
 {
@@ -301,7 +301,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Utilities.hart_forcade",
     "category": "Function",
-    "text": "hart_forcade(lattice, supercell; digits)\n\n\nComputes the cyclic group of a supercell with respect to a lattice. It makes it possible to identify the class of periodically equivalent cell that a given position within the supercell belongs to. The function returns a named tuple with the transform and the quotient.\n\nExamples\n\nusing Crystals, Unitful\nfcc = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u\"nm\"\nsupercell = [0 2 2; 0 -4 2; -1 0 -2]\nht = hart_forcade(fcc, fcc * supercell)\ndisplay(ht)\n\nprintln(\"Positions in supercell:\")\nfor index in CartesianRange((ht.quotient...))\n    position = inv(ht.transform) * [index[u] for u in eachindex(ht.quotient)]\n    println(\"- \", ustrip(position), \" (\", unit(eltype(position)), \")\")\nend\n\n# output\n\nHart-Forcade transform\n- transform (nm^-1): [-1.0 -1.0 1.0; -1.0 1.0 1.0; -1.0 1.0 3.0]\n- quotient: [1,2,6]\n\nPositions in supercell:\n- [-1.0,0.0,0.0] (nm)\n- [-2.0,0.5,-0.5] (nm)\n- [-0.5,0.0,0.5] (nm)\n- [-1.5,0.5,0.0] (nm)\n- [0.0,0.0,1.0] (nm)\n- [-1.0,0.5,0.5] (nm)\n- [0.5,0.0,1.5] (nm)\n- [-0.5,0.5,1.0] (nm)\n- [1.0,0.0,2.0] (nm)\n- [0.0,0.5,1.5] (nm)\n- [1.5,0.0,2.5] (nm)\n- [0.5,0.5,2.0] (nm)\n\n\n\n"
+    "text": "hart_forcade(lattice, supercell; digits)\n\n\nComputes the cyclic group of a supercell with respect to a lattice. It makes it possible to identify the class of periodically equivalent cell that a given position within the supercell belongs to. The function returns a named tuple with the transform and the quotient.\n\nExamples\n\nusing Crystals, Unitful\nfcc = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u\"nm\"\nsupercell = [0 2 2; 0 -4 2; -1 0 -2]\nht = hart_forcade(fcc, fcc * supercell)\n\nprintln(ht)\nprintln(\"Positions in supercell:\")\nfor index in CartesianRange((ht.quotient...))\n    position = inv(ht.transform) * [index[u] for u in eachindex(ht.quotient)]\n    println(\"- \", ustrip(position), \" (\", unit(eltype(position)), \")\")\nend\n\n# output\n\nHart-Forcade transform\n- transform (nm^-1): [-1.0 -1.0 1.0; -1.0 1.0 1.0; -1.0 1.0 3.0]\n- quotient: [1,2,6]\n\nPositions in supercell:\n- [-1.0,0.0,0.0] (nm)\n- [-2.0,0.5,-0.5] (nm)\n- [-0.5,0.0,0.5] (nm)\n- [-1.5,0.5,0.0] (nm)\n- [0.0,0.0,1.0] (nm)\n- [-1.0,0.5,0.5] (nm)\n- [0.5,0.0,1.5] (nm)\n- [-0.5,0.5,1.0] (nm)\n- [1.0,0.0,2.0] (nm)\n- [0.0,0.5,1.5] (nm)\n- [1.5,0.0,2.5] (nm)\n- [0.5,0.5,2.0] (nm)\n\n\n\n"
 },
 
 {
@@ -349,7 +349,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.diamond",
     "category": "Function",
-    "text": "diamond(T; unit)\ndiamond()\n\n\nDiamond lattice \n\n\n\n"
+    "text": "diamond()\ndiamond(T; unit)\n\n\nDiamond lattice \n\n\n\n"
 },
 
 {
@@ -365,7 +365,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.rock_salt",
     "category": "Function",
-    "text": "rock_salt()\nrock_salt(T; unit)\n\n\nRock-salt lattice \n\n\n\n"
+    "text": "rock_salt(T; unit)\nrock_salt()\n\n\nRock-salt lattice \n\n\n\n"
 },
 
 {
@@ -373,7 +373,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.wurtzite",
     "category": "Function",
-    "text": "wurtzite(T; unit)\nwurtzite()\n\n\nWurtzite lattice \n\n\n\n"
+    "text": "wurtzite()\nwurtzite(T; unit)\n\n\nWurtzite lattice \n\n\n\n"
 },
 
 {
@@ -381,7 +381,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.zinc_blende",
     "category": "Function",
-    "text": "zinc_blende(T; unit)\nzinc_blende()\n\n\nZinc-blende lattice \n\n\n\n"
+    "text": "zinc_blende()\nzinc_blende(T; unit)\n\n\nZinc-blende lattice \n\n\n\n"
 },
 
 {
