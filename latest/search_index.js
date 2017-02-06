@@ -333,7 +333,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.b5",
     "category": "Function",
-    "text": "b5(T; unit)\nb5()\n\n\nb5 (spinel) lattice \n\n\n\n"
+    "text": "b5()\nb5(T; unit)\n\n\nb5 (spinel) lattice \n\n\n\n"
 },
 
 {
@@ -365,7 +365,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.rock_salt",
     "category": "Function",
-    "text": "rock_salt(T; unit)\nrock_salt()\n\n\nRock-salt lattice \n\n\n\n"
+    "text": "rock_salt()\nrock_salt(T; unit)\n\n\nRock-salt lattice \n\n\n\n"
 },
 
 {
@@ -373,7 +373,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.wurtzite",
     "category": "Function",
-    "text": "wurtzite()\nwurtzite(T; unit)\n\n\nWurtzite lattice \n\n\n\n"
+    "text": "wurtzite(T; unit)\nwurtzite()\n\n\nWurtzite lattice \n\n\n\n"
 },
 
 {
@@ -381,7 +381,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Lattices.zinc_blende",
     "category": "Function",
-    "text": "zinc_blende()\nzinc_blende(T; unit)\n\n\nZinc-blende lattice \n\n\n\n"
+    "text": "zinc_blende(T; unit)\nzinc_blende()\n\n\nZinc-blende lattice \n\n\n\n"
 },
 
 {
@@ -397,7 +397,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Catalogue",
     "title": "Crystals.Log.set_log_level",
     "category": "Function",
-    "text": "set_log_level(level)\nset_log_level()\n\n\nModifies log-level of all \"trucks\" in Crystals logs. The input should be one of \"debug\", \"info\", \"warn\", \"error\", from least to most verbose.\n\n\n\n"
+    "text": "set_log_level()\nset_log_level(level)\n\n\nModifies log-level of all \"trucks\" in Crystals logs. The input should be one of \"debug\", \"info\", \"warn\", \"error\", from least to most verbose.\n\n\n\n"
 },
 
 {
