@@ -7,10 +7,11 @@ julia:
   - release
 notifications:
   email: false
-# uncomment the following lines to override the default test script
-#script:
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#  - julia -e 'Pkg.clone(pwd()); Pkg.build("Crystal"); Pkg.test("Crystal"; coverage=true)'
+script:
+ - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+ - julia -e 'Pkg.clone(pwd()); Pkg.build("Crystals"); Pkg.test("Crystals"; coverage=true)'
 after_success:
-  - julia -e 'Pkg.add("Documenter")'
-  - julia -e 'cd(Pkg.dir("Crystals")); include(joinpath("docs", "make.jl"))'
+ - julia -e 'Pkg.add("Documenter")'
+ - julia -e 'cd(Pkg.dir("Crystals")); include(joinpath("docs", "make.jl"))'
+ - julia -e 'Pkg.add("Coverage")'
+ - julia -e 'cd(Pkg.dir("Crystals")); using Coverage; Codecov.submit(process_folder())'

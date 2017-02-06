@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/mdavezac/Crystals.jl.svg?branch=master)](https://travis-ci.org/mdavezac/Crystals.jl)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://mdavezac.github.io/Crystals.jl/latest)
+[![Coverage Status](https://coveralls.io/repos/mdavezac/Crystals.jl/badge.svg)](https://coveralls.io/r/mdavezac/Crystals.jl)
 
 # Crystals
 
