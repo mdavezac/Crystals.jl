@@ -193,8 +193,8 @@ species_ids(::Integer, props::AbstractDataFrame, cols::Symbol) = species_ids(pro
     is_primitive(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol}}; kwargs...)
     is_primitive(crystal::Crystal; kwargs...)
 
-True if the crystal structure is primitice, e.g. not a supercell, e.g. not reducible to a
-an equivalent lattice with fewer atoms.
+True if the crystal structure is primitive, e.g. not a supercell, e.g. not reducible to an
+equivalent lattice with fewer atoms.
 """
 is_primitive(args...; kwargs...) = size(inner_translations(args...; kwargs...), 2) == 0
 

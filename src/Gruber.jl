@@ -114,12 +114,12 @@ end
 
 Determines Gruber cell of an input cell.
 
-The Gruber cell is an optimal parameterization of a lattice, eg shortest
+The Gruber cell is an optimal parameterization of a lattice, e.g. shortest
 cell-vectors and angles closest to 90 degrees. The new cell is in the same basis
-as the origin cell: no rotation has been incured. The cell parameters are
+as the origin cell: no rotation has been incurred. The cell parameters are
 uniquely determined, even though the cell itself is not (certain symmetry
 operations leaving the structure unchanged may yield a more recognizable cell).
-If you want a unique cartesian cell (in a different cartesian basis), use
+If you want a unique Cartesian cell (in a different Cartesian basis), use
 the `niggly` algorithm.
 
 # Arguments
@@ -204,11 +204,11 @@ end
 """
     niggly(cell::Matrix; kwargs...)
 
-Determines a unique cartesian cell equivalent to the input, with the shortest
+Determines a unique Cartesian cell equivalent to the input, with the shortest
 possible vectors and squarest angles. For an explanation of the parameters, see
 `gruber`. In practice, this function computes the cell-parameters of a `gruber` cell and
 then reconstructs the cell matrix. Hence, the result should be quite unique for any lattice
-representation, including any rotation of the underlying cartesian coordinates.
+representation, including any rotation of the underlying Cartesian coordinates.
 """
 niggly(cell::Matrix, kwargs...) = cell_parameters(cell_parameters(gruber(cell; kwargs...)))
 

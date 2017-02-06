@@ -1,9 +1,9 @@
-Atomic positions can be initialized, modified, and accessed in cartesian or fractional
+Atomic positions can be initialized, modified, and accessed in Cartesian or fractional
 coordinates. Cartesian coordinates refer to *real world* positions in the same physical
 units as the crystal cell. Fractional coordinates however are in units *of* the crystal
 cell.
 
-## Creating and accessing fractional and cartesian coordinates
+## Creating and accessing fractional and Cartesian coordinates
 
 In the following, we create a crystal structure using fractional coordinates, through
 the simple expedience of *not* specifying actual units.
@@ -30,8 +30,8 @@ display(frac_crystal[:cartesian])
 ```
 
 Note that querying `:position` returns fractional coordinates. If we create a structure with
-cartesian coordinates instead -- by calling the constructor with positions that have units
--- then querying `:position` would return the cartesian coordinates.
+Cartesian coordinates instead -- by calling the constructor with positions that have units
+-- then querying `:position` would return the Cartesian coordinates.
 
 ```jldocset
 cart_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u"nm",
@@ -77,10 +77,10 @@ Note that the column name explicitly specifies `fractional`, as opposed to `cart
 This call (indeed, all bracket operator call) will always create a new instance of a
 `Crystal`, whether it is strictly needed or not.
 
-## Setting coordinates from fractional or cartesian inputs
+## Setting coordinates from fractional or Cartesian inputs
 
 When setting a position, it is not necessary to specify whether the input is fractional or
-cartesian. If the input has physical units, then it is cartesian. If it doesn't, then it is
+Cartesian. If the input has physical units, then it is Cartesian. If it doesn't, then it is
 fractional. The appropriate transformation is applied before setting the position in the
 crystal.
 
@@ -107,7 +107,7 @@ cell(nm):
 
 Apart from `:cartesian` and `:fractional`, there are three other special column names that
 ease access to specific atomic properties. `:x`, `:y`, `:z` will return an array
-representing the corresponding coordinate, in the same system -- cartesian or fractional --
+representing the corresponding coordinate, in the same system -- Cartesian or fractional --
 as the crystal (and as `:position`). `:x`, `:y`, `:z`  can be used to set a specific
 coordinate as well. Only three such special names are provided. 
 

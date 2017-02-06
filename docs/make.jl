@@ -2,8 +2,8 @@ using Documenter
 using Crystals
 makedocs(
          modules = [Crystals],
-         clean = false,
-         format = :html,
+         clean = true,
+         # format = :html,
          sitename = "Crystals.jl",
          authors = "Mayeul d'Avezac",
          analytics = "UA-89508993-1",

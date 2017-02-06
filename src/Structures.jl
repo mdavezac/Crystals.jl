@@ -152,8 +152,10 @@ volume, and their cell vectors are integer linear combinations of one another.
 * `lattices::Vararg{Union{Matrix, Crystal}}`: Any number of lattices
 * `digits::Integer`: when checking the cells are integer co-linear, the product ``A^{-1}B``
   is first rounded to this number of digits
-* `rtol::Real`: unitless relative tolerance when checking the volumes correspond
-* `atol::Real`: unitless absolute tolerance when checking the volumes correspond
+* `rtol::Real`: relative tolerance when checking the volumes correspond (no units).
+  Default to $(default_tolerance).
+* `atol::Real`: absolute tolerance when checking the volumes correspond (no units).
+  Default to $(default_tolerance).
 
 # Examples
 
@@ -220,7 +222,7 @@ function Base.show(io::IO, crystal::Crystal)
         println(io)
     end
     with_pos = copy(crystal.properties)
-    const name = is_fractional(crystal) ? :fractional : :cartesian
+    const name = is_fractional(crystal) ? :fractional : :Cartesian
     const positions = [tuple(ustrip(crystal.positions[:, i])...) for i in 1:length(crystal)]
     show(io, hcat(DataFrame(Any[positions], [name]), crystal.properties),
          false, :Atom, false)
@@ -230,7 +232,7 @@ end
     $(SIGNATURES)
 
 Appends an atom to a crystal structure. The position of the atom is a necessary
-argument, whether in cartesian or in fractional coordinates. If keyword arguments are
+argument, whether in Cartesian or in fractional coordinates. If keyword arguments are
 present, then they represent atomic properties for the atom being added. Properties that
 are not explicitly given are set to `NA`. Similarly, new properties that were not
 present in the crystal structure previously are `NA` except for the newly added atom.
@@ -668,7 +670,7 @@ cell(nm):
   0.0 0.5 0.5
   0.5 0.0 0.5
   0.5 0.5 0.0
-│ Atom │ cartesian         │
+│ Atom │ Cartesian         │
 ├──────┼───────────────────┤
 │ 1    │ (0.0,-0.0,-0.0)   │
 │ 2    │ (0.25,0.25,-0.25) │

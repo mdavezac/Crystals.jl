@@ -9,7 +9,8 @@ using Crystals: Log
 using DataFrames: nrow, DataArray
 using NamedTuples: @NT
 using Unitful
-using Unitful: Dimensions
+using Unitful: Dimensions, NoUnits
+using DocStringExtensions
 
 """
     eldimension(u::Any)
@@ -28,23 +29,69 @@ is_unitful{T <: Number}(a::Type{T}) = Val{:unitless}()
 is_unitful{T, D, U}(a::Type{Quantity{T, D, U}}) = Val{:unitful}()
 
 """ Tuple holding Hart-Forcade transform """
-typealias HartForcadeResult @NT(transform::Matrix, quotient::Vector)
+typealias HartForcadeTransform @NT(transform::Matrix, quotient::Vector)
 
 """
-    hart_forcade(lattice::AbstractMatrix, supercell::AbstractMatrix; digits::Integer=8)
+$(SIGNATURES)
 
 Computes the cyclic group of a supercell with respect to a lattice. It makes it
 possible to identify the class of periodically equivalent cell that a given
-position within the supercell belongs to.
+position within the supercell belongs to. The function returns a named tuple with the
+transform and the quotient.
 
-Returns the transform and the quotient.
+# Examples
+
+```jldocset
+using Crystals, Unitful
+fcc = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
+supercell = [0 2 2; 0 -4 2; -1 0 -2]
+ht = hart_forcade(fcc, fcc * supercell)
+display(ht)
+
+println("Positions in supercell:")
+for index in CartesianRange((ht.quotient...))
+    position = inv(ht.transform) * [index[u] for u in eachindex(ht.quotient)]
+    println("- ", ustrip(position), " (", unit(eltype(position)), ")")
+end
+
+# output
+
+Hart-Forcade transform
+- transform (nm^-1): [-1.0 -1.0 1.0; -1.0 1.0 1.0; -1.0 1.0 3.0]
+- quotient: [1,2,6]
+
+Positions in supercell:
+- [-1.0,0.0,0.0] (nm)
+- [-2.0,0.5,-0.5] (nm)
+- [-0.5,0.0,0.5] (nm)
+- [-1.5,0.5,0.0] (nm)
+- [0.0,0.0,1.0] (nm)
+- [-1.0,0.5,0.5] (nm)
+- [0.5,0.0,1.5] (nm)
+- [-0.5,0.5,1.0] (nm)
+- [1.0,0.0,2.0] (nm)
+- [0.0,0.5,1.5] (nm)
+- [1.5,0.0,2.5] (nm)
+- [0.5,0.5,2.0] (nm)
+```
 """
 function hart_forcade(lattice::AbstractMatrix, supercell::AbstractMatrix; digits::Integer=8)
     fractional = convert(Matrix{Int64}, round(inv(lattice) * supercell, digits))
 
     snf, left, right = smith_normal_form(fractional)
 
-    HartForcadeResult(left * inv(lattice), diag(snf))
+    HartForcadeTransform(left * inv(lattice), diag(snf))
+end
+
+function Base.show(io::IO, ht::HartForcadeTransform)
+    if unit(eltype(ht.transform)) ≠ NoUnits
+        trans_unit = " ($(unit(eltype(ht.transform))))"
+    else
+        trans_unit = ""
+    end
+    println(io, "Hart-Forcade transform")
+    println(io, "- transform", trans_unit, ": ", ustrip(ht.transform))
+    println(io, "- quotient: ", ustrip(ht.quotient))
 end
 
 """
@@ -71,8 +118,8 @@ end
 """
     to_cartesian(positions::AbstractArray, cell::AbstractMatrix)
 
-Converts positions to cartesian units (Unitful). If the positions have no units, they are
-already cartesian units, and this operation is a no-op.
+Converts positions to Cartesian units (Unitful). If the positions have no units, they are
+already Cartesian units, and this operation is a no-op.
 """
 function to_cartesian(pos::AbstractArray, cell::AbstractMatrix)
     to_cartesian(is_unitful(pos), pos, cell)
@@ -82,7 +129,8 @@ function to_cartesian(v::Val{:unitless}, positions::AbstractArray, cell::Abstrac
     to_cartesian(v, is_unitful(cell), positions, cell)
 end
 function to_cartesian(::Val{:unitless}, ::Val{:unitless}, ::AbstractArray, ::AbstractMatrix)
-    Log.error("The cell is unitless. Cannot determine how to make positions cartesian.")
+    Log.error("The cell has no physical units. " *
+              "Cannot determine how to make positions Cartesian.")
 end
 function to_cartesian(::Val{:unitless}, ::Val{:unitful},
                       positions::AbstractArray, cell::AbstractMatrix)
@@ -93,7 +141,7 @@ end
 """
     to_same_kind(positions::AbstractArray, same::AbstractArray, cell::AbstractMatrix)
 
-Converts positions to same units, cartesian or fractional, as `same`. If possible, it
+Converts positions to same units, Cartesian or fractional, as `same`. If possible, it
 returns a reference to `positions` without copy. The function helps maintain _kind_
 stability in other utility functions.
 """
@@ -153,7 +201,7 @@ function is_periodic{T, D, U}(a::AbstractMatrix,
 end
 
 """
-    into_cell(pos::Union{Vector, Position}, cell::AbstractMatrix)
+    $(SIGNATURES)
 
 Folds periodic positions into cell
 """
@@ -174,7 +222,9 @@ end
 """
     origin_centered(positions::AbstractArrays, cell::AbstractMatrix)
 
-Folds column vector(s)/Position(s) back to origin
+Folds positions back to origin, such that each fractional component ``x_f`` is between
+``-0.5\\leq x_f < 0.5``. If the input is in Cartesian (fractional) coordinates, then the
+result is also in Cartesian (fractional) coordinates.
 """
 function origin_centered(pos::AbstractArray, cell::AbstractMatrix)
     to_same_kind(mod(to_fractional(pos, cell) .+ 0.5, -1) .+ 0.5, pos, cell)
@@ -183,11 +233,10 @@ end
 """
     into_voronoi(positions::AbstractArray, cell::AbstractMatrix; extent::Integer=1)
 
-Folds column vector(s)/Position(s) into first Brillouin zone of the input cell.
-Makes a well-meaning effort at returning the periodic image with the smallest possible norm.
-It recenter the atoms around the origin and then looks for the smallest periodic images
-within `-extent:extent` cells. If the cell is quite pathological, then the result will not
-be within the voronoi cell.
+Folds positions into first Brillouin zone of the input cell. Makes a well-meaning effort at
+returning the periodic image with the smallest possible norm. It recenter the atoms around
+the origin and then looks for the smallest periodic images within `-extent:extent` cells. If
+the cell is quite pathological, then the result will not be within the Voronoi cell.
 """
 function into_voronoi(pos::AbstractArray, cell::AbstractMatrix; extent::Integer=1)
     zcentered = to_cartesian(origin_centered(pos, cell), cell)
@@ -208,15 +257,14 @@ function into_voronoi(pos::AbstractArray, cell::AbstractMatrix; extent::Integer=
 end
 
 """
-    supercell(lattice::Crystal, supercell::AbstractMatrix;
-              site_id::Bool=true, cell_id::Bool=true)
+    $(SIGNATURES)
 
 Creates a supercell from an input lattice.
 
 # Parameters
 
 * `lattice::Crystal`: the original lattice
-* `supercell::AbstractMatrix`: the cell of the supercell in cartesian coordinates
+* `supercell::AbstractMatrix`: the cell of the supercell in Cartesian coordinates
 * `site_id::Bool`: Whether to add/modify an atomic property indicating the index
   of the site in the original lattice
 * `cell_id::Bool`: Whether to add/modify an atomic property indicating the index

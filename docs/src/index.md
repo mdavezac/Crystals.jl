@@ -1,6 +1,6 @@
 # Crystals
 
-This package provides a basic framework for dealing with crystalline structures in julia,
+This package provides a basic framework for dealing with crystalline structures in Julia,
 from an atomistic point of view. The main object type, `Crystal`, defines a crystalline
 structure in terms of its periodicity, as given by a cell, and atomic sites with different
 properties.

@@ -14,7 +14,7 @@ is_periodic
 is_primitive
 ```
 
-Typical container and dataframe methods are also available, such as `names`, `size`,
+Typical container and DataFrame methods are also available, such as `names`, `size`,
 `ndims`, `nrow`, `ncol`, `endof`.
 
 ## Looping

@@ -1,6 +1,6 @@
 ## Simple Construction
 
-A `Crystal` declares an atomic crystalline structure, e.g an inifinite periodic arrangement
+A `Crystal` declares an atomic crystalline structure, e.g. an infinite periodic arrangement
 of atoms. The constructor takes at the very least an `n` by `n` array defining
 the periodicity of the crystal, i.e. the crystal cell. The cell must have physical units
 attached to it.
@@ -34,7 +34,7 @@ crystal = Crystal(eye(2)u"km",
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ cartesian │ species │ label │
+│ Atom │ Cartesian │ species │ label │
 ├──────┼───────────┼─────────┼───────┤
 │ 1    │ (1.0,1.0) │ "Al"    │ +     │
 │ 2    │ (2.0,3.0) │ "O"     │ -     │
@@ -107,12 +107,12 @@ crystal[1]
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ cartesian │ species │ label │
+│ Atom │ Cartesian │ species │ label │
 ├──────┼───────────┼─────────┼───────┤
 │ 1    │ (1.0,1.0) │ "Al"    │ +     │
 ```
 
-Note that the return is still a crystaline structure. In a way, we are selecting an atom
+Note that the return is still a crystalline structure. In a way, we are selecting an atom
 *and* it's periodic image, rather than single atom.
 
 
@@ -162,7 +162,7 @@ Atom: O and -
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ cartesian │ species │ label │
+│ Atom │ Cartesian │ species │ label │
 ├──────┼───────────┼─────────┼───────┤
 │ 1    │ (1.0,1.0) │ "Al+"   │ +     │
 │ 2    │ (2.0,3.0) │ "O-"    │ -     │
