@@ -11,10 +11,10 @@ using Crystals.Utilities: eldimension, CellParameters
     hf = @inferred(hart_forcade(lattice.cell, crystal.cell))
     @test hf.quotient == [1, 2, 2]
     for i in eachindex(crystal)
-        @test isinteger(hf.transform * crystal[i, :position])
+        @test all(isinteger, hf.transform * crystal[i, :position])
     end
     for i=1:hf.quotient[1], j=1:hf.quotient[2], k=1:hf.quotient[3]
-        @test isinteger(inv(lattice.cell) * (inv(hf.transform) * [i, j, k]))
+        @test all(isinteger, inv(lattice.cell) * (inv(hf.transform) * [i, j, k]))
     end
 end
 
@@ -34,17 +34,17 @@ end
 #
 @testset "> to fractional" begin
   cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
-  position = [0.1, 0.1, 0.2]u"nm"
-  @test @inferred(to_fractional(position, cell)) ≈ inv(cell) * position
-  uposition = ustrip(position)
+  pos = [0.1, 0.1, 0.2]u"nm"
+  @test @inferred(to_fractional(pos, cell)) ≈ inv(cell) * pos
+  uposition = ustrip(pos)
   @test @inferred(to_fractional(uposition, cell)) === uposition
 end
 
 @testset "> to cartesian" begin
     cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
-    position = [0.1, 0.1, 0.2]u"nm"
-    @test @inferred(to_cartesian(position, cell)) === position
-    uposition = ustrip(position)
+    pos = [0.1, 0.1, 0.2]u"nm"
+    @test @inferred(to_cartesian(pos, cell)) === pos
+    uposition = ustrip(pos)
     @test @inferred(to_cartesian(uposition, cell)) ≈ cell * uposition
 end
 
@@ -52,10 +52,10 @@ end
   cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
 
   for i in 1:1 #10
-    position = cell * rand(3)
-    image = position + cell * rand(Int8, (3, ))
-    @test @inferred(is_periodic(position, image, cell))
-    @test !@inferred(is_periodic(position, image + (rand(3) * 1e-4) * u"nm", cell))
+    pos = cell * rand(3)
+    image = pos + cell * rand(Int8, (3, ))
+    @test @inferred(is_periodic(pos, image, cell))
+    @test !@inferred(is_periodic(pos, image + (rand(3) * 1e-4) * u"nm", cell))
 
     positions = cell * rand((3, 10))
     images = positions + cell * rand(Int8, (3, 10))
@@ -70,14 +70,14 @@ end
   cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
 
   for i in 1:10
-    position = cell * (rand(3) + rand(Int8, (3, )))
-    folded = into_cell(position, cell)
-    @test @inferred(is_periodic(position, folded, cell))
+    pos = cell * (rand(3) + rand(Int8, (3, )))
+    folded = into_cell(pos, cell)
+    @test @inferred(is_periodic(pos, folded, cell))
     @test all(0 .≤ inv(cell) * folded .< 1)
 
-    position = cell * (rand((3, 10)) + rand(Int8, (3, 10)))
-    folded = into_cell(position, cell)
-    @test all(@inferred(is_periodic(position, folded, cell)))
+    pos = cell * (rand((3, 10)) + rand(Int8, (3, 10)))
+    folded = into_cell(pos, cell)
+    @test all(@inferred(is_periodic(pos, folded, cell)))
     @test all(0 .≤ inv(cell) * folded .< 1)
   end
 end
@@ -86,23 +86,23 @@ end
   cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
 
   for i in 1:10
-    position = cell * (rand(3) + rand(Int8, (3, )))
-    folded = @inferred(origin_centered(position, cell))
-    @test is_periodic(position, folded, cell)
+    pos = cell * (rand(3) + rand(Int8, (3, )))
+    folded = @inferred(origin_centered(pos, cell))
+    @test is_periodic(pos, folded, cell)
     @test all(-0.5 .< inv(cell) * folded .≤ 0.5)
 
-    position = cell * (rand((3, 10)) + rand(Int8, (3, 10)))
-    folded = @inferred(origin_centered(position, cell))
-    @test all(is_periodic(position, folded, cell))
+    pos = cell * (rand((3, 10)) + rand(Int8, (3, 10)))
+    folded = @inferred(origin_centered(pos, cell))
+    @test all(is_periodic(pos, folded, cell))
     @test all(-0.5 .< inv(cell) * folded .≤ 0.5)
   end
 end
 
-function none_smaller(position::Vector, cell::Matrix)
-  const d = norm(position)
+function none_smaller(pos::Vector, cell::Matrix)
+  const d = norm(pos)
   for i = -2:2, j = -2:2, k = -2:2
     i == j == k == 0 && continue
-    norm(position + cell * [i, j, k]) < d * (1 - 1e-12)  && return false
+    norm(pos + cell * [i, j, k]) < d * (1 - 1e-12)  && return false
   end
   true
 end
@@ -111,15 +111,15 @@ end
   cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
 
   for i in 1:10
-    position = cell * (rand(3) + rand(Int8, (3, )))
-    folded = into_voronoi(position, cell)
-    @test is_periodic(position, folded, cell)
+    pos = cell * (rand(3) + rand(Int8, (3, )))
+    folded = into_voronoi(pos, cell)
+    @test is_periodic(pos, folded, cell)
     @test none_smaller(folded, cell)
 
-    position = cell * (rand((3, 10)) + rand(Int8, (3, 10)))
-    folded = into_voronoi(position, cell)
-    @test all(is_periodic(position, folded, cell))
-    for i = 1:size(position, 2)
+    pos = cell * (rand((3, 10)) + rand(Int8, (3, 10)))
+    folded = into_voronoi(pos, cell)
+    @test all(is_periodic(pos, folded, cell))
+    for i = 1:size(pos, 2)
       @test none_smaller(folded[:, i], cell)
     end
   end

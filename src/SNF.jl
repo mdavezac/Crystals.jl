@@ -3,16 +3,16 @@ using Unitful: Quantity, ustrip
 export smith_normal_form
 
 function choose_pivot!{T <: Integer}(left::Matrix{T}, smith::Matrix{T},
-                                     step::Integer, index::Integer=1)
+                                     istep::Integer, index::Integer=1)
   index > size(smith, 2) && return 0
   while all(smith[:, index] .== 0)
     index += 1
     index ≤ size(smith, 2) || return 0;
   end
-  if smith[step, index] == 0
+  if smith[istep, index] == 0
     k = findfirst(x -> x ≠ 0, smith[:, index])
-    left[step, :], left[k, :] = deepcopy(left[k, :]), deepcopy(left[step, :])
-    smith[step, :], smith[k, :] = deepcopy(smith[k, :]), deepcopy(smith[step, :])
+    left[istep, :], left[k, :] = deepcopy(left[k, :]), deepcopy(left[istep, :])
+    smith[istep, :], smith[k, :] = deepcopy(smith[k, :]), deepcopy(smith[istep, :])
   end
   index
 end
@@ -25,11 +25,11 @@ function improve_col_pivot!{T <: Integer}(left::Matrix{T}, smith::Matrix{T},
 
     β, σ, τ = gcdx(smith[row, col], smith[k, col])
     α = smith[row, col] / β
-    γ = smith[k, col] / β
+    γₒ = smith[k, col] / β
 
     Lp = eye(T, size(left, 1))
     Lp[row, [row, k]] = [σ, τ]
-    Lp[k, [row, k]] = [-γ, α]
+    Lp[k, [row, k]] = [-γₒ, α]
 
     left[:] = Lp * left
     smith[:] = Lp * smith
@@ -44,11 +44,11 @@ function improve_row_pivot!{T <: Integer}(smith::Matrix{T}, right::Matrix{T},
 
     β, σ, τ = gcdx(smith[row, col], smith[row, k])
     α = smith[row, col] / β
-    γ = smith[row, k] / β
+    γ₀ = smith[row, k] / β
 
     Rp = eye(T, size(right, 1))
     Rp[[col, k], col] = [σ, τ]
-    Rp[[col, k], k] = [-γ, α]
+    Rp[[col, k], k] = [-γ₀, α]
 
     right[:] = right * Rp
     smith[:] = smith * Rp
@@ -81,14 +81,14 @@ end
 
 function diagonalize_all_entries!{T <: Integer}(left::Matrix{T}, smith::Matrix{T}, right::Matrix{T})
   @assert size(smith, 1) == size(smith, 2)
-  step = 1
-  col = choose_pivot!(left, smith, step)
+  istep = 1
+  col = choose_pivot!(left, smith, istep)
   while 0 < col ≤ size(smith, 2)
-    diagonalize_at_entry!(left, smith, right, step, col)
+    diagonalize_at_entry!(left, smith, right, istep, col)
 
-    step += 1
+    istep += 1
     col += 1
-    col = choose_pivot!(left, smith, step, col)
+    col = choose_pivot!(left, smith, istep, col)
   end
   return smith, left, right
 end
@@ -126,7 +126,7 @@ function smith_normal_form{T <: Integer}(matrix::Matrix{T})
   move_zero_entries!(smith, right)
   make_divisible!(left, smith, right)
   left = convert(Matrix{T}, diagm([u ≥ 0 ? 1: -1 for u in diag(smith)])) * left
-  smith = abs(smith)
+  smith = abs.(smith)
   smith, left, right
 end
 

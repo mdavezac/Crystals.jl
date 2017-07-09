@@ -11,6 +11,7 @@ using NamedTuples: @NT
 using Unitful
 using Unitful: Dimensions, NoUnits
 using DocStringExtensions
+using Base.Iterators: cycle, take
 
 """
     eldimension(u::Any)
@@ -29,7 +30,7 @@ is_unitful{T <: Number}(a::Type{T}) = Val{:unitless}()
 is_unitful{T, D, U}(a::Type{Quantity{T, D, U}}) = Val{:unitful}()
 
 """ Tuple holding Hart-Forcade transform """
-typealias HartForcadeTransform @NT(transform::Matrix, quotient::Vector)
+const HartForcadeTransform = @NT(transform::Matrix, quotient::Vector)
 
 """
 $(SIGNATURES)
@@ -76,7 +77,7 @@ Positions in supercell:
 ```
 """
 function hart_forcade(lattice::AbstractMatrix, supercell::AbstractMatrix; digits::Integer=8)
-    fractional = convert(Matrix{Int64}, round(inv(lattice) * supercell, digits))
+    fractional = convert(Matrix{Int64}, round.(inv(lattice) * supercell, digits))
 
     snf, left, right = smith_normal_form(fractional)
 
@@ -163,8 +164,8 @@ True if the positions are one-to-one periodic with respect to the input cell.
 """
 function is_periodic(a::AbstractVector, b::AbstractVector, cell::AbstractMatrix;
                      tolerance::Real=default_tolerance)
-    const result = abs(
-        mod(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
+    const result = abs.(
+        mod.(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
     ) .< tolerance
     all(result)
 end
@@ -179,8 +180,8 @@ function is_periodic{T, D, U}(a::AbstractMatrix,
                               b::AbstractVector,
                               cell::AbstractMatrix{Quantity{T, D, U}};
                               tolerance::Real=default_tolerance)
-    const result = abs(
-        mod(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
+    const result = abs.(
+        mod.(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
     ) .< tolerance
     all(result, 1)
 end
@@ -194,8 +195,8 @@ function is_periodic{T, D, U}(a::AbstractMatrix,
                               b::AbstractMatrix,
                               cell::AbstractMatrix{Quantity{T, D, U}};
                               tolerance::Real=default_tolerance)
-    const result = abs(
-        mod(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
+    const result = abs.(
+        mod.(to_fractional(a, cell) .- to_fractional(b, cell) + 0.5, 1) - 0.5
     ) .< tolerance
     all(result, 1)
 end
@@ -207,7 +208,7 @@ Folds periodic positions into cell
 """
 function into_cell(pos::AbstractArray, cell::AbstractMatrix;
                    tolerance::Real=default_tolerance)
-    frac = mod(to_fractional(pos, cell), 1)
+    frac = mod.(to_fractional(pos, cell), 1)
     if tolerance > 0
         for i in 1:length(frac)
             if abs(frac[i] - 1e0) < tolerance
@@ -227,7 +228,7 @@ Folds positions back to origin, such that each fractional component ``x_f`` is b
 result is also in Cartesian (fractional) coordinates.
 """
 function origin_centered(pos::AbstractArray, cell::AbstractMatrix)
-    to_same_kind(mod(to_fractional(pos, cell) .+ 0.5, -1) .+ 0.5, pos, cell)
+    to_same_kind(mod.(to_fractional(pos, cell) .+ 0.5, -1) .+ 0.5, pos, cell)
 end
 
 """
@@ -241,7 +242,7 @@ the cell is quite pathological, then the result will not be within the Voronoi c
 function into_voronoi(pos::AbstractArray, cell::AbstractMatrix; extent::Integer=1)
     zcentered = to_cartesian(origin_centered(pos, cell), cell)
     result = deepcopy(zcentered)
-    norms = [norm(zcentered[:, i]) for i in 1:size(zcentered, 2)]
+    norms = [norm(zcentered[:, z]) for z in 1:size(zcentered, 2)]
     for n in eachindex(norms)
         for i = -extent:extent, j = -extent:extent, k = -extent:extent
             translation = cell * [i, j, k]
@@ -296,27 +297,27 @@ function supercell(lattice::Crystal, supercell::AbstractMatrix;
 end
 
 """ Tuple holding cell parameters """
-typealias CellParameters @NT(a, b, c, α, β, γ)
+const CellParameters = @NT(a, b, c, α, β, γ)
 
 """
     cell_parameters(a::Quantity, b::Quantity, c::Quantity,
                     α::Quantity=(π/2)u"rad", β::Quantity=(π/2)u"rad",
-                    γ::Quantity=(π/2)u"rad")
+                    γₒ::Quantity=(π/2)u"rad")
 
 Computes the cell matrix from the cell parameters [a, b, c, α, β, γ].
 """
 function cell_parameters(a::Quantity, b::Quantity, c::Quantity,
                          α::Quantity=(π/2)u"rad", β::Quantity=(π/2)u"rad",
-                         γ::Quantity=(π/2)u"rad")
+                         γₒ::Quantity=(π/2)u"rad")
     cx = cos(β)
-    cy = (cos(α) - cos(β)cos(γ))/sin(γ)
+    cy = (cos(α) - cos(β)cos(γₒ))/sin(γₒ)
     units = unit(a)
     bb = uconvert(unit(a), b)
     cc = uconvert(unit(a), c)
-    zero = typeof(a)(0)
-    [a      bb * cos(γ) cc * cx;
-     zero   bb * sin(γ) cc * cy;
-     zero   zero        cc * √(1 - cx * cx - cy * cy)]
+    z₀ = typeof(a)(0)
+    [a    bb * cos(γₒ) cc * cx;
+     z₀   bb * sin(γₒ) cc * cy;
+     z₀   z₀           cc * √(1 - cx * cx - cy * cy)]
 end
 cell_parameters(cp::CellParameters) = cell_parameters(cp...)
 
@@ -331,8 +332,8 @@ function cell_parameters(cell::AbstractMatrix)
     a, b, c = sqrt.(diag(G))
     α = acos(0.5(G[2, 3] + G[3, 2])/(c * b))u"rad"
     β = acos(0.5(G[3, 1] + G[1, 3])/(a * c))u"rad"
-    γ = acos(0.5(G[1, 2] + G[2, 1])/(a * b))u"rad"
-    CellParameters(a, b, c, α, β, γ)
+    γₒ = acos(0.5(G[1, 2] + G[2, 1])/(a * b))u"rad"
+    CellParameters(a, b, c, α, β, γₒ)
 end
 
 end

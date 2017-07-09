@@ -41,10 +41,10 @@
     @testset ">> Convert position to crystal's type" begin
         position_for_crystal = Crystals.Structures.position_for_crystal
         cell = [0 1 1; 1 0 1; 1 1 0]u"nm"
-        real = Crystal(cell)
-        @test !is_fractional(real)
-        @test position_for_crystal(real, [1, 1, 1]) == cell * [1, 1, 1]
-        @test position_for_crystal(real, [1, 1, 1]u"nm") == [1, 1, 1]u"nm"
+        realpos = Crystal(cell)
+        @test !is_fractional(realpos)
+        @test position_for_crystal(realpos, [1, 1, 1]) == cell * [1, 1, 1]
+        @test position_for_crystal(realpos, [1, 1, 1]u"nm") == [1, 1, 1]u"nm"
         frac = Crystal(Float64[0 1 1; 1 0 1; 1 1 0]u"nm", position=[0, 0, 0])
         @test position_for_crystal(frac, [1, 1, 1]) == [1, 1, 1]
         @test position_for_crystal(frac, [1, 1, 1]u"nm") == inv(frac.cell) * [1, 1, 1]u"nm"
@@ -304,10 +304,6 @@ end
         @test_throws ErrorException delete!(crystal, :position)
 
         crystal = deepcopy(original)
-        delete!(crystal, :)
-        @test names(crystal) == [:position]
-
-        crystal = deepcopy(original)
         empty!(crystal)
         @test nrow(crystal) == 0
         @test ncol(crystal) == 1
@@ -325,36 +321,46 @@ end
         @test nrow(crystal) == 1
         @test crystal.properties == original.properties[2, :]
         @test crystal.positions == original.positions[:, 2:2]
+
+        crystal = deepcopy(original)
+        deleterows!(crystal, :)
+        @test nrow(crystal) == 0
+        @test ncol(crystal) == ncol(original)
+
+        crystal = deepcopy(original)
+        delete!(crystal, :)
+        @test nrow(crystal) == 0
+        @test ncol(crystal) == ncol(original)
     end
 end
 
 @testset "> vcat and append" begin
-    first = Crystal([0 5 5; 5 0 5; 5 5 0]u"nm", species=["Al", "O", "O"],
+    crysA = Crystal([0 5 5; 5 0 5; 5 5 0]u"nm", species=["Al", "O", "O"],
                     position=[1, 1, 1]u"nm",
                     position=[1, 2, 1]u"nm",
                     position=[0, 0, 1]u"nm",
                     label=[:+, :-, :-])
-    second = Crystal([0 5 5; 5 0 5; 5 5 0]u"nm",
+    crysB = Crystal([0 5 5; 5 0 5; 5 5 0]u"nm",
                      position=[2, -1, 1]u"nm",
                      position=[0, 0, -1]u"nm",
                      label=[:-, :a])
 
-    crystal = vcat(first, second)
+    crystal = vcat(crysA, crysB)
     @test nrow(crystal) == 5
     @test crystal.positions == transpose([1 1 1; 1 2 1; 0 0 1; 2 -1 1; 0 0 -1])u"nm"
     @test crystal[1:3, :species] == ["Al", "O", "O"]
-    @test all(isna(crystal[4:5, :species]))
+    @test all(isna.(crystal[4:5, :species]))
     @test crystal[:label] == [:+, :-, :-, :-, :a]
 
-    crystal = deepcopy(first[[:position, :label]])
-    append!(crystal, second)
+    crystal = deepcopy(crysA[[:position, :label]])
+    append!(crystal, crysB)
     @test nrow(crystal) == 5
     @test crystal.positions == transpose([1 1 1; 1 2 1; 0 0 1; 2 -1 1; 0 0 -1])u"nm"
     @test crystal[:label] == [:+, :-, :-, :-, :a]
 
     # mismatching columns
-    crystal = deepcopy(first)
-    @test_throws ErrorException append!(crystal, second)
+    crystal = deepcopy(crysA)
+    @test_throws ErrorException append!(crystal, crysB)
 end
 
 @testset "> round crystal cell and positions" begin

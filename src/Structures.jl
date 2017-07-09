@@ -16,9 +16,9 @@ using Unitful: dimension, unit
 const RESERVED_COLUMNS = [:position, :fractional, :cartesian, :x, :y, :z]
 
 """ Top type node for Crystals """
-abstract AbstractCrystal
+abstract type AbstractCrystal end
 
-typealias RowIndices{T <: Integer} Union{T, AbstractVector{T}, Range{T}, Colon}
+RowIndices{T <: Integer} = Union{T, AbstractVector{T}, Range{T}, Colon}
 
 """ Describe a crystalline structure """
 type Crystal{T <: Number, D, U, P <: Number} <: AbstractCrystal
@@ -65,8 +65,8 @@ function Crystal{C, D, U, P <: Number}(cell::Matrix{Quantity{C, D, U}},
 end
 
 function Crystal{C, D, U}(cell::Matrix{Quantity{C, D, U}}; kwargs...)
-    const dpositions = filter(x -> x[1] ∈ (:position, :positions), kwargs)
-    const tpositions = filter(x -> x[1] ∈ (:tposition, :tpositions), kwargs)
+    const dpositions = collect(filter(x -> x[1] ∈ (:position, :positions), kwargs))
+    const tpositions = collect(filter(x -> x[1] ∈ (:tposition, :tpositions), kwargs))
     if length(dpositions) ≠ 0 && length(tpositions) ≠ 0
         const positions = hcat((x[2] for x in dpositions)...,
                                transpose(hcat([x[2] for x in tpositions]...)))
@@ -75,12 +75,11 @@ function Crystal{C, D, U}(cell::Matrix{Quantity{C, D, U}}; kwargs...)
     elseif length(tpositions) ≠ 0
         const positions = transpose(hcat([x[2] for x in tpositions]...))
     else
-        const positions = reshape(Matrix{Quantity{C, D, U}}(),
-                                  (size(cell, 1), 0))
+        const positions = Matrix{Quantity{C, D, U}}(size(cell, 1), 0)
     end
 
-    filter!(x -> x[1] ∉ (:position, :positions, :tposition, :tpositions), kwargs)
-    Crystal(cell, positions; kwargs...)
+    leftover = filter(x -> x[1] ∉ (:position, :positions, :tposition, :tpositions), kwargs)
+    Crystal(cell, positions; leftover...)
 end
 
 """ Underlying physical units of the crystal """
@@ -128,17 +127,17 @@ volume(crystal::Crystal) = volume(crystal.cell)
 
 function are_compatible_lattices(cell_a::Matrix, cell_b::Matrix;
                                  digits=12, rtol=default_tolerance, atol=default_tolerance)
-    isinteger(round(inv(cell_a) * cell_b, digits)) &&
+    all(isinteger.(round.(inv(cell_a) * cell_b, digits))) &&
     isapprox(ustrip(volume(cell_a)), ustrip(volume(cell_b)); rtol=rtol, atol=atol)
 end
 function are_compatible_lattices(crystal::Crystal, cell::Matrix; kwargs...)
-    are_compatible_lattices(crystal.cell, cell)
+    are_compatible_lattices(crystal.cell, cell; kwargs...)
 end
 function are_compatible_lattices(crystal_a::Crystal, crystal_b::Crystal; kwargs...)
-    are_compatible_lattices(crystal_a.cell, crystal_b.cell)
+    are_compatible_lattices(crystal_a.cell, crystal_b.cell; kwargs...)
 end
 function are_compatible_lattices(cell::Matrix, crystal::Crystal; kwargs...)
-    are_compatible_lattices(cell, crystal.cell)
+    are_compatible_lattices(cell, crystal.cell; kwargs...)
 end
 """
     are_compatible_lattices(lattices...)
@@ -201,7 +200,7 @@ end
 position_for_crystal(::Val{:fractional}, ::AbstractMatrix, pos::AbstractArray) = pos
 position_for_crystal(::Val{:cartesian}, cell::AbstractMatrix, p::AbstractArray) = cell * p
 function position_for_crystal{T <: Quantity}(::Val{:cartesian},
-                                             cell::AbstractMatrix,
+                                             ::AbstractMatrix,
                                              positions::AbstractArray{T})
     positions
 end
@@ -383,7 +382,7 @@ function Base.getindex(crystal::Crystal, ::Colon, symbol::Symbol)
 end
 
 Base.getindex(crystal::Crystal, ::Colon, ::Colon) = copy(crystal)
-Base.getindex(crystal::Crystal, row::Any, col::Colon) = Base.getindex(crystal, row)
+Base.getindex(crystal::Crystal, row::Any, ::Colon) = Base.getindex(crystal, row)
 
 function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVector{Symbol})
     const specials = symbols ∩ RESERVED_COLUMNS
@@ -428,7 +427,7 @@ end
 Base.names(crystal::Crystal) = push!(names(crystal.properties), :position)
 Base.size(crystal::Crystal) = (r = size(crystal.properties); (r[1], r[2] + 1))
 Base.size(crystal::Crystal, i::Integer) = size(crystal)[i]
-Base.ndims(crystal::Crystal) = 2
+Base.ndims(::Crystal) = 2
 DataFrames.nrow(crystal::Crystal) = size(crystal.positions, 2)
 DataFrames.ncol(crystal::Crystal) = ncol(crystal.properties) + 1
 Base.endof(crystal::Crystal) = nrow(crystal)
@@ -588,6 +587,10 @@ function DataFrames.deleterows!(crystal::Crystal, row::Integer)
     crystal.positions = crystal.positions[:, rows]
 end
 
+function DataFrames.deleterows!(crystal::Crystal, ::Colon)
+    deleterows!(crystal, 1:length(crystal))
+end
+
 function DataFrames.deleterows!(crystal::Crystal, rows::RowIndices)
     deleterows!(crystal.properties, rows)
     prows = filter(i -> i ∉ rows, 1:nrow(crystal))
@@ -644,15 +647,15 @@ Rounds the cell and positions of a crystal. See `round` for possible parameters.
 """
 function round!{T, D, U, TT, DD, UU}(crystal::Crystal{T, D, U, Quantity{TT, DD, UU}},
                                      args...)
-    crystal.cell = round(reinterpret(T, crystal.cell), args...) * unit(Quantity{T, D, U})
+    crystal.cell = round.(reinterpret(T, crystal.cell), args...) * unit(Quantity{T, D, U})
     const punit = unit(Quantity{TT, DD, UU})
-    crystal[:position] = round(reinterpret(TT, crystal[:position]), args...) * punit
+    crystal[:position] = round.(reinterpret(TT, crystal[:position]), args...) * punit
     crystal
 end
 
 function round!{T, D, U, TT}(crystal::Crystal{T, D, U, TT}, args...)
-    crystal.cell = round(reinterpret(T, crystal.cell), args...) * unit(Quantity{T, D, U})
-    crystal[:position] = round(crystal[:position], args...)
+    crystal.cell = round.(reinterpret(T, crystal.cell), args...) * unit(Quantity{T, D, U})
+    crystal[:position] = round.(crystal[:position], args...)
     crystal
 end
 

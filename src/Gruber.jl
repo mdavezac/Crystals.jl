@@ -6,12 +6,11 @@ using Crystals.Utilities: cell_parameters
 using Crystals.Structures: Crystal, volume
 using Crystals: Log
 using Unitful: unit, ustrip, Quantity
-const max_no_change = 2
 
 function no_opt_change_test(new, last)
     const m_new = 16e0 * new;
-    const diff = new - last;
-    const m_new_plus_diff = m_new + diff;
+    const difference = new - last;
+    const m_new_plus_diff = m_new + difference;
     const m_new_plus_diff_minus_m_new = m_new_plus_diff - m_new;
     m_new_plus_diff_minus_m_new != 0;
 end
@@ -31,8 +30,8 @@ function def_test(args; tolerance=default_tolerance)
 end
 
 function def_gt_0(args...; tolerance=default_tolerance)
-    zero, positive = def_test(args; tolerance=tolerance)
-    positive == 3 || (zero == 0 && positive == 1)
+    z₀, positive = def_test(args; tolerance=tolerance)
+    positive == 3 || (z₀ == 0 && positive == 1)
 end
 
 
@@ -53,7 +52,7 @@ function n3_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
     const j = params[5] ≤ -tolerance ? -1 : 1
     const k = params[6] ≤ -tolerance ? -1 : 1
     rinv[:, :] = rinv * [i 0 0; 0 j 0; 0 0 k]
-    params[4:end] = abs(params[4:end])
+    params[4:end] = abs.(params[4:end])
 end
 
 function n4_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
@@ -73,31 +72,31 @@ function n4_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
         end
     end
     rinv[:, :] = rinv * update
-    params[4:end] = -abs(params[4:end])
+    params[4:end] = -abs.(params[4:end])
 end
 
 function n5_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
-    const sign = params[4] > tolerance ? -1 : 1
-    rinv[:, :] = rinv * [1 0 0; 0 1 sign; 0 0 1]
-    params[3] += params[2] + sign * params[4]
-    params[4] += 2sign * params[2]
-    params[5] += sign * params[6]
+    const pos_or_neg = params[4] > tolerance ? -1 : 1
+    rinv[:, :] = rinv * [1 0 0; 0 1 pos_or_neg; 0 0 1]
+    params[3] += params[2] + pos_or_neg * params[4]
+    params[4] += 2pos_or_neg * params[2]
+    params[5] += pos_or_neg * params[6]
 end
 
 function n6_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
-    const sign = params[5] > tolerance ? -1 : 1
-    rinv[:, :] = rinv * [1 0 sign; 0 1 0; 0 0 1]
-    params[3] += params[1] + sign * params[5]
-    params[4] += sign * params[6]
-    params[5] += 2sign * params[1]
+    const pos_or_neg = params[5] > tolerance ? -1 : 1
+    rinv[:, :] = rinv * [1 0 pos_or_neg; 0 1 0; 0 0 1]
+    params[3] += params[1] + pos_or_neg * params[5]
+    params[4] += pos_or_neg * params[6]
+    params[5] += 2pos_or_neg * params[1]
 end
 
 function n7_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
-    const sign = params[6] > tolerance ? -1 : 1
-    rinv[:, :] = rinv * [1 sign 0; 0 1 0; 0 0 1]
-    params[2] += params[1] + sign * params[6]
-    params[4] += sign * params[5]
-    params[6] += 2sign * params[1]
+    const pos_or_neg = params[6] > tolerance ? -1 : 1
+    rinv[:, :] = rinv * [1 pos_or_neg 0; 0 1 0; 0 0 1]
+    params[2] += params[1] + pos_or_neg * params[6]
+    params[4] += pos_or_neg * params[5]
+    params[6] += 2pos_or_neg * params[1]
 end
 
 function n8_action(params::Vector, rinv::Matrix)
@@ -145,7 +144,7 @@ function gruber{T <: Number}(cell::Matrix{T};
     const metric = transpose(cell) * cell
     params = vcat(diag(metric), [2metric[2, 3], 2metric[1, 3], 2metric[1, 2]])
     rinv = eye(size(metric, 1))
-    nochange, previous = 0, -params[1:3]
+    no_change, previous = 0, -params[1:3]
     iteration::Int = 0
     for iteration in 1:itermax
         condition0 =
@@ -160,7 +159,7 @@ function gruber{T <: Number}(cell::Matrix{T};
             n3_action(params, rinv; tolerance=ε)
         else
             n4_action(params, rinv; tolerance=ε)
-            if all(abs(previous - params[1:3]) .< ε)
+            if all(abs.(previous .- params[1:3]) .< ε)
                 no_change += 1
             else
                 no_change = 0

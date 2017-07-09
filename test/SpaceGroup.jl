@@ -1,5 +1,5 @@
 function valid_super_cell(size::Integer=3)
-    cell = rand(-3:3, (3, 3))
+    cell = rand(-3:3, (size, size))
     while det(cell) ≤ 1
         cell = rand(-3:3, (3, 3))
     end
@@ -40,14 +40,14 @@ end
         for op in ops
             @test size(op) == (3, 3)
             transformation = inv(cell) * op * cell
-            @test isinteger(round(transformation, 8))
+            @test all(isinteger, round.(transformation, 8))
             @test volume(transformation) ≈ 1.0
 
             if numops != 48
                 found = 0
                 for op in allops
                     transformation = inv(cell) * op * cell
-                    isinteger(round(transformation, 8)) || continue
+                    all(isinteger, round.(transformation, 8)) || continue
                     isapprox(volume(transformation), 1, rtol=1e-8) || continue
                     found += 1
                 end
@@ -124,6 +124,6 @@ end
         b5 = Lattices.b5()
         ops = space_group(b5)
         @test length(ops) == 48
-        @test count(op -> all(abs(ustrip(op([0, 0, 0]u"nm"))) .< 1e-12), ops) == 12
+        @test count(o -> all(abs.(ustrip(o([0, 0, 0]u"nm"))) .< 1e-12), ops) == 12
     end
 end

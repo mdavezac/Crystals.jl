@@ -55,7 +55,6 @@ Implementation taken from [ENUM](http://enum.sourceforge.net/).
 function point_group{T <: Number}(cell::AbstractMatrix{T};
                                   tolerance::Real=default_tolerance)
     @assert size(cell, 1) == size(cell, 2)
-    const ndims = size(cell, 1)
 
     avecs, bvecs, cvecs = potential_equivalents(cell, tolerance=tolerance)
     result = Matrix{T}[eye(cell)]
@@ -112,7 +111,7 @@ function inner_translations_impl(fractional::AbstractMatrix,
         species[site] ≠ atom_type && continue
 
         translation = into_voronoi(fractional[:, site] - atom_center, grubcell)
-        all(abs(translation) .< tolerance) && continue
+        all(abs.(translation) .< tolerance) && continue
 
         is_mapping = true
         for mapping ∈ eachindex(species)
@@ -263,7 +262,7 @@ function primitive_impl(cell::AbstractMatrix,
         det(ustrip(trial)) < 0e0 && Log.error("Negative volume")
 
         int_cell = inv(trial) * cell
-        all(abs(int_cell - round(Integer, int_cell) .< 1e-8)) || continue
+        all(abs.(int_cell - round.(Integer, int_cell) .< 1e-8)) || continue
 
         new_cell = trial
         V = volume(trial)
@@ -344,7 +343,7 @@ function space_group_impl(cell::AbstractMatrix,
     Log.info(
         "$(length(result)) symmetry operations found, with " *
         "$(count(result) do op
-           all(abs(ustrip(op(zeros(eltype(cartesian), size(translations, 1))))) .< 1e-8)
+           all(abs.(ustrip(op(zeros(eltype(cartesian), size(translations, 1))))) .< 1e-8)
         end) " * "pure symmetries."
     )
     [u for u in result]
