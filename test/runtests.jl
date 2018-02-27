@@ -1,6 +1,6 @@
 module CrystalTest
 using Crystals
-using DataFrames: nrow, DataFrame, ncol, deleterows!, @data, NA, isna
+using DataFrames: nrow, DataFrame, ncol, deleterows!, missing, ismissing
 using Base.Test
 using Unitful
 

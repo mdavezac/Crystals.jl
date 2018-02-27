@@ -2,7 +2,7 @@ julia 0.6
 Unitful
 DataFrames
 CoordinateTransformations
-Lumberjack
+MicroLogging
 NamedTuples
 Documenter
 DocStringExtensions

@@ -1,10 +1,10 @@
 module Structures
+using MicroLogging
 using DocStringExtensions
 export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices, round!
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 
-using DataFrames: DataFrame, nrow, NA, index, ncol, deleterows!
-using Crystals: Log
+using DataFrames: DataFrame, nrow, missing, index, ncol, deleterows!
 using Crystals.Constants: default_tolerance
 import Base
 import Base: delete!
@@ -33,20 +33,20 @@ end
 function Crystal{C, D, U, P <: Number}(cell::Matrix{Quantity{C, D, U}},
                                        positions::Matrix{P},
                                        args...; kwargs...)
-    size(cell, 1) == size(cell, 2) || Log.error("Cell matrix is not square")
+    size(cell, 1) == size(cell, 2) || error("Cell matrix is not square")
 
-    if size(positions, 1)  != size(cell, 1)
-        Log.error("Positions and cell have different sizes")
+    if size(positions, 1) != size(cell, 1)
+        error("Positions and cell have different sizes")
     end
 
     properties = DataFrame(args...; kwargs...)
 
     if length(names(properties) ∩ RESERVED_COLUMNS) > 0
-        Log.error("The following column names are reserved: $(RESERVED_COLUMNS)")
+        error("The following column names are reserved: $RESERVED_COLUMNS")
     end
 
     if nrow(properties) != 0 && nrow(properties) != size(positions, 2)
-        Log.error("atomic properties and positions have different lengths")
+        error("atomic properties and positions have different lengths")
     end
 
     if P <: Quantity
@@ -63,6 +63,7 @@ function Crystal{C, D, U, P <: Number}(cell::Matrix{Quantity{C, D, U}},
                             properties)
     end
 end
+
 
 function Crystal{C, D, U}(cell::Matrix{Quantity{C, D, U}}; kwargs...)
     const dpositions = collect(filter(x -> x[1] ∈ (:position, :positions), kwargs))
@@ -128,7 +129,7 @@ volume(crystal::Crystal) = volume(crystal.cell)
 function are_compatible_lattices(cell_a::Matrix, cell_b::Matrix;
                                  digits=12, rtol=default_tolerance, atol=default_tolerance)
     all(isinteger.(round.(inv(cell_a) * cell_b, digits))) &&
-    isapprox(ustrip(volume(cell_a)), ustrip(volume(cell_b)); rtol=rtol, atol=atol)
+        isapprox(ustrip(volume(cell_a)), ustrip(volume(cell_b)); rtol=rtol, atol=atol)
 end
 function are_compatible_lattices(crystal::Crystal, cell::Matrix; kwargs...)
     are_compatible_lattices(crystal.cell, cell; kwargs...)
@@ -233,8 +234,8 @@ end
 Appends an atom to a crystal structure. The position of the atom is a necessary
 argument, whether in Cartesian or in fractional coordinates. If keyword arguments are
 present, then they represent atomic properties for the atom being added. Properties that
-are not explicitly given are set to `NA`. Similarly, new properties that were not
-present in the crystal structure previously are `NA` except for the newly added atom.
+are not explicitly given are set to `missing`. Similarly, new properties that were not
+present in the crystal structure previously are `missing` except for the newly added atom.
 
 # Examples
 
@@ -252,44 +253,44 @@ crystal
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ Cartesian       │ species │ label │ μ  │
-├──────┼─────────────────┼─────────┼───────┼────┤
-│ 1    │ (1.0,1.0)       │ "Al"    │ +     │ NA │
-│ 2    │ (2.0,3.0)       │ "O"     │ -     │ NA │
-│ 3    │ (4.0,5.0)       │ "O"     │ -     │ NA │
-│ 4    │ (1.0e-8,2.0e-8) │ "B"     │ NA    │ 1  │
+│ Atom │ Cartesian       │ species │ label   │ μ      │
+├──────┼─────────────────┼─────────┼─────────┼────────┤
+│ 1    │ (1.0,1.0)       │ "Al"    │ +       │ mssing │
+│ 2    │ (2.0,3.0)       │ "O"     │ -       │ mssing │
+│ 3    │ (4.0,5.0)       │ "O"     │ -       │ mssing │
+│ 4    │ (1.0e-8,2.0e-8) │ "B"     │ missing │ 1      │
 ```
 """
 function Base.push!(crystal::Crystal, position::Vector; kwargs...)
     if length(position) ≠ size(crystal.cell, 1)
-        Log.error("Dimensionality of input position and crystal do not match")
+        error("Dimensionality of input position and crystal do not match")
     end
     crystal.positions = hcat(crystal.positions,
                              position_for_crystal(crystal, position))
-    row = Any[NA for u in 1:length(crystal.properties)]
+    row = Any[missing for u in 1:length(crystal.properties)]
 
-    missing = Tuple{Symbol, Any}[]
+    notpresent = Tuple{Symbol, Any}[]
     const colnames = names(crystal.properties)
     for (name, value) in kwargs
         if name ∈ RESERVED_COLUMNS
-            Log.error("$(name) is a reserved name and cannot be used in push!")
+            error("$(name) is a reserved name and cannot be used in push!")
         elseif name ∉ colnames
-            push!(missing, (name, value))
+            push!(notpresent, (name, value))
         else
             row[index(crystal.properties)[name]] = value
         end
     end
-    if size(crystal.properties, 2) == 0 && length(missing) > 0
-        const name, value = pop!(missing)
+    if size(crystal.properties, 2) == 0 && length(notpresent) > 0
+        const name, value = pop!(notpresent)
         crystal.properties[name] = [value]
     else
         push!(crystal.properties, row)
     end
-    for (name, value) in missing
+    for (name, value) in notpresent
         # given twice, makes no sense
         @assert name ∉ names(crystal.properties)
         crystal.properties[name] = fill(value, size(crystal.properties, 1))
-        crystal.properties[1:(size(crystal.properties, 1) - 1), name] = NA
+        crystal.properties[1:(size(crystal.properties, 1) - 1), name] = missing
     end
 end
 
@@ -330,7 +331,7 @@ function Base.getindex(crystal::Crystal, symbols::AbstractVector{Symbol})
         return result
     elseif length(specials) > 1
         allowed = setdiff(RESERVED_COLUMNS, (:x, :y, :z))
-        Log.error("Cannot use more than one of $allowed at a time")
+        error("Cannot use more than one of $allowed at a time")
     elseif specials[1] == :position
         args = filter(x -> x ≠ :position, symbols)
         typeof(crystal)(crystal.cell, crystal.positions, crystal.properties[args])
@@ -397,7 +398,7 @@ function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVec
         return result
     elseif length(specials) > 1
         allowed = setdiff(RESERVED_COLUMNS, (:x, :y, :z))
-        Log.error("Cannot use more than one of $allowed at a time")
+        error("Cannot use more than one of $allowed at a time")
     elseif specials[1] == :position
         args = filter(x -> x ≠ :position, symbols)
         typeof(crystal)(crystal.cell,
@@ -444,7 +445,7 @@ end
 
 function Base.setindex!(crystal::Crystal, v::DataFrame, cols::AbstractVector{Symbol})
     if :position ∈ names(v) || :position ∈ cols
-        Log.error("Positions cannot be set from a dataframe")
+        error("Positions cannot be set from a dataframe")
     end
     setindex!(crystal.properties, v, cols)
 end
@@ -454,7 +455,7 @@ function Base.setindex!(crystal::Crystal,
                         rows::Any,
                         cols::AbstractVector{Symbol})
     if :position ∈ names(v) || :position ∈ cols
-        Log.error("Positions cannot be set from a dataframe")
+        error("Positions cannot be set from a dataframe")
     end
     setindex!(crystal.properties, v, rows, cols)
 end
@@ -485,22 +486,22 @@ end
 function Base.setindex!(crystal::Crystal, v::Any, col::Symbol)
     if col == :position
         if size(v) ≠ size(crystal.positions)
-            Log.error("Input has incorrect size")
+            error("Input has incorrect size")
         end
         crystal.positions = position_for_crystal(crystal, v)
     elseif col == :x
         if size(v) ≠ size(crystal.positions)
-            Log.error("Input has incorrect size")
+            error("Input has incorrect size")
         end
         crystal.positions[1, :] = position_for_crystal(crystal, v)
     elseif col == :y
         if size(v) ≠ size(crystal.positions)
-            Log.error("Input has incorrect size")
+            error("Input has incorrect size")
         end
         crystal.positions[2, :] = position_for_crystal(crystal, v)
     elseif col == :z
         if size(v) ≠ size(crystal.positions)
-            Log.error("Input has incorrect size")
+            error("Input has incorrect size")
         end
         crystal.positions[3, :] = position_for_crystal(crystal, v)
     else
@@ -512,7 +513,7 @@ function Base.setindex!(crystal::Crystal, v::Crystal,
                         row::Any, cols::AbstractVector{Symbol}; check_periodicity=true)
     if :position ∈ cols
         if check_periodicity && !are_compatible_lattices(crystal, v)
-            Log.error("The two crystal structures do not have the same periodicity")
+            error("The two crystal structures do not have the same periodicity")
         end
         crystal.positions[:, row] = position_for_crystal(crystal, v)
         setindex!(crystal.properties, v.properties, row, filter(x -> x ≠ :position, cols))
@@ -523,7 +524,7 @@ end
 
 function Base.setindex!(crystal::Crystal, v::Any, col::Symbol, xyz::RowIndices)
     if col != :position
-        Log.error("crystal[:positions, integer] is only available for positions")
+        error("crystal[:positions, integer] is only available for positions")
     end
 
     crystal.positions[xyz, :] = v
@@ -532,7 +533,7 @@ end
 function Base.setindex!(crystal::Crystal, v::Any, rows::RowIndices,
                         col::Symbol, xyz::RowIndices)
     if col != :position
-        Log.error("crystal[:positions, integer] is only available for positions")
+        error("crystal[:positions, integer] is only available for positions")
     end
     crystal.positions[xyz, rows] = v
 end
@@ -547,7 +548,7 @@ Deletes one or more atomic property. Positions cannot be deleted.
 """
 function Base.delete!(crystal::Crystal, col::Union{Symbol, AbstractVector{Symbol}})
     if !_is_not_position(col)
-        Log.error("Cannot delete position column from a structure")
+        error("Cannot delete position column from a structure")
     end
     delete!(crystal.properties, col)
     crystal
@@ -614,7 +615,7 @@ Concatenates crystals together. The lattices must be compatible.
 """
 function Base.vcat(crystal::Crystal, other::Vararg{Crystal}; check_periodicity=true)
     if check_periodicity && !are_compatible_lattices(crystal, other...)
-        Log.error("Some crystal structures do not have the same periodicity")
+        error("Some crystal structures do not have the same periodicity")
     end
     typeof(crystal)(crystal.cell,
                     hcat(crystal.positions,
@@ -632,7 +633,7 @@ otherwise.
 """
 function Base.append!(crystal::Crystal, other::Vararg{Crystal}; check_periodicity=true)
     if check_periodicity && !are_compatible_lattices(crystal, other...)
-        Log.error("Some crystal structures do not have the same periodicity")
+        error("Some crystal structures do not have the same periodicity")
     end
     crystal.positions = hcat(crystal.positions,
                              (position_for_crystal(crystal, u) for u in other)...)

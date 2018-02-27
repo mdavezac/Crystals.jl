@@ -5,11 +5,11 @@ export into_voronoi, supercell, cell_parameters
 using Crystals.Constants: default_tolerance
 using Crystals.Structures: Crystal
 using Crystals.SNF: smith_normal_form
-using Crystals: Log
-using DataFrames: nrow, DataArray
+using DataFrames: nrow
 using NamedTuples: @NT
 using Unitful
 using Unitful: Dimensions, NoUnits
+using MicroLogging
 using DocStringExtensions
 using Base.Iterators: cycle, take
 
@@ -109,7 +109,7 @@ function to_fractional(v::Val{:unitful}, positions::AbstractArray, cell::Abstrac
     to_fractional(v, is_unitful(cell), positions, cell)
 end
 function to_fractional(::Val{:unitful}, ::Val{:unitless}, ::AbstractArray, ::AbstractMatrix)
-    Log.error("The cell is unitless. Cannot determine how to make positions fractional.")
+    error("The cell is unitless. Cannot determine how to make positions fractional.")
 end
 function to_fractional(::Val{:unitful}, v::Val{:unitful},
                        positions::AbstractArray, cell::AbstractMatrix)
@@ -130,8 +130,8 @@ function to_cartesian(v::Val{:unitless}, positions::AbstractArray, cell::Abstrac
     to_cartesian(v, is_unitful(cell), positions, cell)
 end
 function to_cartesian(::Val{:unitless}, ::Val{:unitless}, ::AbstractArray, ::AbstractMatrix)
-    Log.error("The cell has no physical units. " *
-              "Cannot determine how to make positions Cartesian.")
+    error("The cell has no physical units. " *
+          "Cannot determine how to make positions Cartesian.")
 end
 function to_cartesian(::Val{:unitless}, ::Val{:unitful},
                       positions::AbstractArray, cell::AbstractMatrix)
@@ -273,7 +273,7 @@ Creates a supercell from an input lattice.
 """
 function supercell(lattice::Crystal, supercell::AbstractMatrix;
                    site_id::Bool=true, tolerance::Real=default_tolerance)
-    nrow(lattice) == 0 && Log.error("Lattice is empty")
+    nrow(lattice) == 0 && error("Lattice is empty")
 
     newcell = to_cartesian(supercell, lattice.cell)
     transform, quotient = hart_forcade(lattice.cell, newcell)

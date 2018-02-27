@@ -4,8 +4,8 @@ export gruber, niggly
 using Crystals.Constants: default_tolerance
 using Crystals.Utilities: cell_parameters
 using Crystals.Structures: Crystal, volume
-using Crystals: Log
 using Unitful: unit, ustrip, Quantity
+using MicroLogging
 
 function no_opt_change_test(new, last)
     const m_new = 16e0 * new;
@@ -68,7 +68,7 @@ function n4_action(params::Vector, rinv::Matrix; tolerance=default_tolerance)
         elseif i == 1 && params[4] > -tolerance
             update[1, 1] = -1
         elseif i * j * k == -1
-            Log.error("Internal error")
+            error("Internal error")
         end
     end
     rinv[:, :] = rinv * update
@@ -131,8 +131,8 @@ the `niggly` algorithm.
 function gruber{T <: Number}(cell::Matrix{T};
                              tolerance::Real=default_tolerance, itermax::Integer=50,
                              max_no_change::Integer=10)
-    size(cell, 1) == size(cell, 2) || Log.error("Matrix not rectangular")
-    volume(cell) > tolerance || Log.error("Singular matrix");
+    size(cell, 1) == size(cell, 2) || error("Matrix not rectangular")
+    volume(cell) > tolerance || error("Singular matrix")
     if itermax ≤ 0
         itermax = typemax(itermax)
     end
@@ -186,8 +186,7 @@ function gruber{T <: Number}(cell::Matrix{T};
         ) || break
         n8_action(params, rinv)
     end
-    iteration == itermax &&
-        Log.error("Reached end of iteration without converging")
+    iteration == itermax && error("Reached end of iteration without converging")
     cell * rinv
 end
 

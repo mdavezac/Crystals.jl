@@ -7,10 +7,10 @@ using Crystals.Structures: Crystal, volume
 using Crystals.Gruber: gruber
 using Crystals.Utilities: into_voronoi, is_periodic, into_cell, is_unitful, to_fractional
 using Crystals.Utilities: to_cartesian, to_same_kind
-using Crystals: Log
+using MicroLogging
 using Unitful: ustrip, Quantity, unit
 using CoordinateTransformations: AffineMap
-using DataFrames: isna, by, nrow, eachrow, DataFrame, AbstractDataFrame, groupby, ncol
+using DataFrames: nrow, AbstractDataFrame, groupby
 
 """
     potential_equivalents(cell::AbstractMatrix; tolerance::Real=$(default_tolerance))
@@ -94,10 +94,10 @@ function inner_translations_impl(fractional::AbstractMatrix,
                                  tolerance::Real=default_tolerance)
     @assert is_unitful(fractional) == Val{:unitless}()
     if length(species) ≠ size(fractional, 2)
-        Log.error("Size of species and fractional positions do not match")
+        error("Size of species and fractional positions do not match")
     end
     if size(cell, 2) ≠ size(fractional, 1)
-        Log.error("Size of cell and fractional positions do not match")
+        error("Size of cell and fractional positions do not match")
     end
     grubcell = gruber(cell)
 
@@ -232,9 +232,9 @@ function primitive_impl(cell::AbstractMatrix,
                         species::AbstractVector;
                         tolerance::Real=default_tolerance)
     if size(cartesian, 2) ≠ length(species)
-        Log.error("Positions and species have incompatible sizes")
+        error("Positions and species have incompatible sizes")
     end
-    size(cell, 2) == size(cartesian, 1) || Log.error("Cell and positions are incompatible")
+    size(cell, 2) == size(cartesian, 1) || error("Cell and positions are incompatible")
     size(cartesian, 2) == 0 && return cell, Int64[1:length(species)...]
 
     grubcell = gruber(cell)
@@ -259,7 +259,7 @@ function primitive_impl(cell::AbstractMatrix,
             reverse!(index)
             trial = trans[:, index]
         end
-        det(ustrip(trial)) < 0e0 && Log.error("Negative volume")
+        det(ustrip(trial)) < 0e0 && error("Negative volume")
 
         int_cell = inv(trial) * cell
         all(abs.(int_cell - round.(Integer, int_cell) .< 1e-8)) || continue
@@ -270,12 +270,12 @@ function primitive_impl(cell::AbstractMatrix,
 
     # Found the new cell with smallest volume (e.g. primivite)
     if V ≥ volume(grubcell) - tolerance * unit(V)
-        Log.error("Found translation but no primitive cell.")
+        error("Found translation but no primitive cell")
     end
 
     # now creates new lattice.
     indices = Int64[]
-    Log.debug("Found gruber cell $(grubcell)")
+    @debug "Found gruber cell $(grubcell)"
 
     for site in 1:size(cartesian, 2)
         position = into_cell(cartesian[:, site], new_cell; tolerance=tolerance)
@@ -288,14 +288,14 @@ function primitive_impl(cell::AbstractMatrix,
         end
     end
 
-    length(species) % length(indices) ≠ 0 && Log.error(
+    length(species) % length(indices) ≠ 0 && error(
         "Nb of atoms in output not multiple of input: " *
         "$(length(species)) % $(length(indices)) ≠ 0"
     )
 
     abs(
         length(species) * volume(new_cell) - length(indices) * volume(cell)
-       ) < tolerance * unit(volume(new_cell))|| Log.error(
+       ) < tolerance * unit(volume(new_cell))|| error(
         "Size and volumes do not match: " *
         "abs($(length(species)) * $(volume(new_cell)) - $(length(indices)) *" *
         "$(volume(cell))) ≥ $(tolerance * unit(volume(new_cell)))"
@@ -340,12 +340,11 @@ function space_group_impl(cell::AbstractMatrix,
             end
         end
     end
-    Log.info(
-        "$(length(result)) symmetry operations found, with " *
-        "$(count(result) do op
-           all(abs.(ustrip(op(zeros(eltype(cartesian), size(translations, 1))))) .< 1e-8)
-        end) " * "pure symmetries."
-    )
+    pure_symms = count(result) do op
+      all(abs.(ustrip(op(zeros(eltype(cartesian), size(translations, 1))))) .< 1e-8)
+    end
+
+    @info "Symmetry operations" total=length(result) pure=pure_symms
     [u for u in result]
 end
 
@@ -368,7 +367,7 @@ function space_group(crystal::Crystal, cols::Union{Symbol, AbstractVector{Symbol
 end
 function space_group(crystal::Crystal, species::AbstractVector{Int64}; kwargs...)
     if length(species) ≠ nrow(crystal)
-        Log.error("The number of species and the number of atomic sites do not match")
+        error("The number of species and the number of atomic sites do not match")
     end
     space_group(crystal.cell, crystal[:position], species; kwargs...)
 end

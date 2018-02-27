@@ -1,5 +1,6 @@
 module Crystals
 using Unitful
+using MicroLogging
 export @u_str
 
 export Crystal, is_fractional, volume, round!, are_compatible_lattices
@@ -18,8 +19,6 @@ if Pkg.installed("Unitful") ≤ v"0.0.4"
         reinterpret(Quantity{iq, typeof(inv(dimension(T))), typeof(inv(unit(T)))}, m)
     end
 end
-
-include("Logging.jl")
 
 module Constants
   const default_tolerance = 1e-8

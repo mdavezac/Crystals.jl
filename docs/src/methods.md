@@ -75,9 +75,11 @@ Modules = [Crystals.Lattices]
 ## Output and Logging
 
 Information and errors during calculations are displayed using an internal log provided by
-[Lumberjack](https://www.github.com/WestleyArgentum/Lumberjack.jl). By default, only
-critical errors result in output. The verbosity can be set manually.
+[MicroLogging](https://www.github.com/c42f/MicroLogging.jl). Verbosity can be set manually
+with:
 
 ```@docs
-Crystals.Log.set_log_level
+using MicroLogging
+using Crystals
+configure_logging(Crystals, min_level=:error)
 ```

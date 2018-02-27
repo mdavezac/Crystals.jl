@@ -341,26 +341,30 @@ end
                     position=[0, 0, 1]u"nm",
                     label=[:+, :-, :-])
     crysB = Crystal([0 5 5; 5 0 5; 5 5 0]u"nm",
-                     position=[2, -1, 1]u"nm",
-                     position=[0, 0, -1]u"nm",
-                     label=[:-, :a])
+                    species=[missing, missing],
+                    position=[2, -1, 1]u"nm",
+                    position=[0, 0, -1]u"nm",
+                    label=[:-, :a])
 
     crystal = vcat(crysA, crysB)
     @test nrow(crystal) == 5
     @test crystal.positions == transpose([1 1 1; 1 2 1; 0 0 1; 2 -1 1; 0 0 -1])u"nm"
     @test crystal[1:3, :species] == ["Al", "O", "O"]
-    @test all(isna.(crystal[4:5, :species]))
+    @test all(ismissing.(crystal[4:5, :species]))
     @test crystal[:label] == [:+, :-, :-, :-, :a]
+    @test_throws ArgumentError vcat(crysA, crysB[[:position, :label]])
 
     crystal = deepcopy(crysA[[:position, :label]])
-    append!(crystal, crysB)
+    append!(crystal, crysB[[:position, :label]])
     @test nrow(crystal) == 5
     @test crystal.positions == transpose([1 1 1; 1 2 1; 0 0 1; 2 -1 1; 0 0 -1])u"nm"
     @test crystal[:label] == [:+, :-, :-, :-, :a]
 
-    # mismatching columns
     crystal = deepcopy(crysA)
+    # eltypes do not match (one is Missing, the other String)
     @test_throws ErrorException append!(crystal, crysB)
+    # mismatching columns
+    @test_throws ErrorException append!(crystal, crysB[[:position, :label]])
 end
 
 @testset "> round crystal cell and positions" begin
@@ -371,4 +375,3 @@ end
     @test crystal.cell == [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
     @test crystal[:position] == transpose([0 0 0; 0.25 0.25 -0.25]u"nm")
 end
-
