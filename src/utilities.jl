@@ -52,7 +52,7 @@ println(ht)
 println("Positions in supercell:")
 for index in CartesianRange((ht.quotient...))
     position = inv(ht.transform) * [index[u] for u in eachindex(ht.quotient)]
-    println("- ", ustrip(position), " (", unit(eltype(position)), ")")
+    println("- ", ustrip.(position), " (", unit(eltype(position)), ")")
 end
 
 # output
@@ -91,8 +91,8 @@ function Base.show(io::IO, ht::HartForcadeTransform)
         trans_unit = ""
     end
     println(io, "Hart-Forcade transform")
-    println(io, "- transform", trans_unit, ": ", ustrip(ht.transform))
-    println(io, "- quotient: ", ustrip(ht.quotient))
+    println(io, "- transform", trans_unit, ": ", ustrip.(ht.transform))
+    println(io, "- quotient: ", ustrip.(ht.quotient))
 end
 
 """

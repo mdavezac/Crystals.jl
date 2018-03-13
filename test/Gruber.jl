@@ -22,7 +22,7 @@
             a = [a00 0 0; a10 a11 0; a20 a21 a22]
             abs(det(a)) > 0 || continue
             g = gruber(cell * a)
-            @test abs(det(ustrip(cell))) > 1e-12
+            @test abs(det(ustrip.(cell))) > 1e-12
             @test volume(cell * a) ≈ volume(g)
             @test all(isinteger, inv(cell) * g)
             @test all(isinteger, round.(inv(g) * cell, 8))

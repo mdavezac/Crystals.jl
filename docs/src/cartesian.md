@@ -22,7 +22,7 @@ frac_crystal = Crystal([0 2.1 2.1; 2.1 0 2.1; 2.1 2.1 0]u"nm",
 @assert frac_crystal[:position] === frac_crystal[:fractional]
 @assert frac_crystal[:cartesian] ≈ frac_crystal.cell * frac_crystal[:fractional]
 units = unit(eltype(frac_crystal[:cartesian]))
-println(ustrip(frac_crystal[:cartesian]), " (", units, ")")
+println(ustrip.(frac_crystal[:cartesian]), " (", units, ")")
 
 # output
 [0.0 1.05; 0.0 1.05; 0.0 1.05] (nm)

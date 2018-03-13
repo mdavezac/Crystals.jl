@@ -36,7 +36,7 @@ end
   cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
   pos = [0.1, 0.1, 0.2]u"nm"
   @test @inferred(to_fractional(pos, cell)) ≈ inv(cell) * pos
-  uposition = ustrip(pos)
+  uposition = ustrip.(pos)
   @test @inferred(to_fractional(uposition, cell)) === uposition
 end
 
@@ -44,7 +44,7 @@ end
     cell = [0 0.5 0.5; 0.5 0 0.5; 0.5 0.5 0]u"nm"
     pos = [0.1, 0.1, 0.2]u"nm"
     @test @inferred(to_cartesian(pos, cell)) === pos
-    uposition = ustrip(pos)
+    uposition = ustrip.(pos)
     @test @inferred(to_cartesian(uposition, cell)) ≈ cell * uposition
 end
 

@@ -144,7 +144,7 @@
       @test  uleft == left
       @test  uright == right
       @test eltype(usmith) == eltype(matrix * u"nm")
-      usmith = reshape([ustrip(u) for u in usmith], size(usmith))
+      usmith = reshape([ustrip.(u) for u in usmith], size(usmith))
       @test usmith == smith
   end
 end

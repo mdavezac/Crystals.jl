@@ -131,7 +131,7 @@ function smith_normal_form{T <: Integer}(matrix::Matrix{T})
 end
 
 function smith_normal_form{I <: Integer, U, D}(matrix::Matrix{Quantity{I, D, U}})
-    s, l, r = smith_normal_form(ustrip(matrix))
+    s, l, r = smith_normal_form(ustrip.(matrix))
     s * unit(Quantity{I, U, D}), l, r
 end
 

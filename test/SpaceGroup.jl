@@ -124,6 +124,6 @@ end
         b5 = Lattices.b5()
         ops = space_group(b5)
         @test length(ops) == 48
-        @test count(o -> all(abs.(ustrip(o([0, 0, 0]u"nm"))) .< 1e-12), ops) == 12
+        @test count(o -> all(abs.(ustrip.(o([0, 0, 0]u"nm"))) .< 1e-12), ops) == 12
     end
 end

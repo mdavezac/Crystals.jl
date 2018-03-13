@@ -85,7 +85,7 @@ end
 
 function point_group{T, D, U}(cell::AbstractMatrix{Quantity{T, D, U}};
                               tolerance::Real=default_tolerance)
-    point_group(ustrip(cell), tolerance=tolerance)
+    point_group(ustrip.(cell), tolerance=tolerance)
 end
 
 function inner_translations_impl(fractional::AbstractMatrix,
@@ -255,11 +255,11 @@ function primitive_impl(cell::AbstractMatrix,
         volume(trial) < 1e-12 * unit(V) && continue
         (volume(trial) > V - 3.0 * tolerance * unit(V)) && continue
 
-        if det(ustrip(trial)) < 0e0
+        if det(ustrip.(trial)) < 0e0
             reverse!(index)
             trial = trans[:, index]
         end
-        det(ustrip(trial)) < 0e0 && error("Negative volume")
+        det(ustrip.(trial)) < 0e0 && error("Negative volume")
 
         int_cell = inv(trial) * cell
         all(abs.(int_cell - round.(Integer, int_cell) .< 1e-8)) || continue
@@ -341,7 +341,7 @@ function space_group_impl(cell::AbstractMatrix,
         end
     end
     pure_symms = count(result) do op
-      all(abs.(ustrip(op(zeros(eltype(cartesian), size(translations, 1))))) .< 1e-8)
+      all(abs.(ustrip.(op(zeros(eltype(cartesian), size(translations, 1))))) .< 1e-8)
     end
 
     @info "Symmetry operations" total=length(result) pure=pure_symms

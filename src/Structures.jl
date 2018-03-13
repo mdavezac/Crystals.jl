@@ -218,12 +218,12 @@ function Base.show(io::IO, crystal::Crystal)
     println(io, "cell(", unit(crystal), "):")
     for i in 1:size(crystal.cell, 1)
         print(io, "  ")
-        join(io, ustrip(crystal.cell[i, :]), ' ')
+        join(io, ustrip.(crystal.cell[i, :]), ' ')
         println(io)
     end
     with_pos = copy(crystal.properties)
     const name = is_fractional(crystal) ? :fractional : :Cartesian
-    const positions = [tuple(ustrip(crystal.positions[:, i])...) for i in 1:length(crystal)]
+    const positions = [tuple(ustrip.(crystal.positions[:, i])...) for i in 1:length(crystal)]
     show(io, hcat(DataFrame(Any[positions], [name]), crystal.properties),
          false, :Atom, false)
 end

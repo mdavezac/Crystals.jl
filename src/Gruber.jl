@@ -193,7 +193,7 @@ end
 function gruber{T, D, U}(cell::Matrix{Quantity{T, D, U}};
                          tolerance::Real=default_tolerance, itermax::Integer=50,
                          max_no_change::Integer=10)
-    gruber(ustrip(cell);
+    gruber(ustrip.(cell);
            tolerance=tolerance,
            itermax=itermax,
            max_no_change=max_no_change) * unit(Quantity{T, D, U})
