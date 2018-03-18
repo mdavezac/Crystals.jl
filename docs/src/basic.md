@@ -1,3 +1,11 @@
+```@meta
+CurrentModule = Crystals
+DocTestSetup = quote
+    using Crystals
+    using Unitful
+end
+```
+
 ## Simple Construction
 
 A `Crystal` declares an atomic crystalline structure, e.g. an infinite periodic arrangement
@@ -22,7 +30,7 @@ properties:
 ```@meta
 DocTestSetup = quote
   using Crystals
-end
+
 ```
 ```jldoctest
 crystal = Crystal(eye(2)u"km",
@@ -34,11 +42,12 @@ crystal = Crystal(eye(2)u"km",
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ Cartesian │ species │ label │
-├──────┼───────────┼─────────┼───────┤
-│ 1    │ (1.0,1.0) │ "Al"    │ +     │
-│ 2    │ (2.0,3.0) │ "O"     │ -     │
-│ 3    │ (4.0,5.0) │ "O"     │ -     │
+
+│ Atom │ Cartesian  │ species │ label │
+├──────┼────────────┼─────────┼───────┤
+│ 1    │ (1.0, 1.0) │ Al      │ +     │
+│ 2    │ (2.0, 3.0) │ O       │ -     │
+│ 3    │ (4.0, 5.0) │ O       │ -     │
 ```
 
 Note that the positions form an `n` by `N` array where `N` is the number of atoms. This is
@@ -67,7 +76,7 @@ Base.Markdown.parse(result)
 Access to the crystal cell happens via `.` call, `crystal.cell`. Atomic properties on the
 other hand are accessed and modified through the square bracket operator. There are several
 ways of doing this, more or less reflecting what can be done with a
-[DataFrame](www.github.com/JuliaStags/DataFrames.jl):
+[DataFrame](https://www.github.com/JuliaStats/DataFrames.jl):
 
 ```@meta
 DocTestSetup = quote
@@ -86,13 +95,13 @@ println(crystal[[1, 3], [:species, :label]])
 crystal[1, :position] = [0, 4]u"m"
 
 # output
-Symbol[:+,:-,:-]
+Symbol[:+, :-, :-]
 2×2 DataFrames.DataFrame
 │ Row │ species │ label │
 ├─────┼─────────┼───────┤
-│ 1   │ "Al"    │ +     │
-│ 2   │ "O"     │ -     │
-2-element Array{Quantity{Int64, Dimensions:{𝐋}, Units:{m}},1}:
+│ 1   │ Al      │ +     │
+│ 2   │ O       │ -     │
+2-element Array{Unitful.Quantity{Int64,Unitful.Dimensions{(Unitful.Dimension{:Length}(1//1),)},Unitful.FreeUnits{(Unitful.Unit{:Meter,Unitful.Dimensions{(Unitful.Dimension{:Length}(1//1),)}}(0, 1//1),),Unitful.Dimensions{(Unitful.Dimension{:Length}(1//1),)}}},1}:
  0 m
  4 m
 ```
@@ -107,9 +116,10 @@ crystal[1]
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ Cartesian │ species │ label │
-├──────┼───────────┼─────────┼───────┤
-│ 1    │ (1.0,1.0) │ "Al"    │ +     │
+
+│ Atom │ Cartesian  │ species │ label │
+├──────┼────────────┼─────────┼───────┤
+│ 1    │ (1.0, 1.0) │ Al      │ +     │
 ```
 
 Note that the return is still a crystalline structure. In a way, we are selecting an atom
@@ -128,7 +138,7 @@ push!
 append!
 vcat
 delete!
-DataFrames.deleterows!
+Crystals.Structures.DataFrames.deleterows!
 empty!
 ```
 
@@ -162,11 +172,12 @@ Atom: O and -
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ Cartesian │ species │ label │
-├──────┼───────────┼─────────┼───────┤
-│ 1    │ (1.0,1.0) │ "Al+"   │ +     │
-│ 2    │ (2.0,3.0) │ "O-"    │ -     │
-│ 3    │ (4.0,5.0) │ "O-"    │ -     │
+
+│ Atom │ Cartesian  │ species │ label │
+├──────┼────────────┼─────────┼───────┤
+│ 1    │ (1.0, 1.0) │ Al+     │ +     │
+│ 2    │ (2.0, 3.0) │ O-      │ -     │
+│ 3    │ (4.0, 5.0) │ O-      │ -     │
 ```
 
 !!! warning

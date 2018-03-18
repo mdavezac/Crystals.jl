@@ -78,7 +78,7 @@ Information and errors during calculations are displayed using an internal log p
 [MicroLogging](https://www.github.com/c42f/MicroLogging.jl). Verbosity can be set manually
 with:
 
-```@docs
+```
 using MicroLogging
 using Crystals
 configure_logging(Crystals, min_level=:error)
