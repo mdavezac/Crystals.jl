@@ -3,8 +3,11 @@ using MicroLogging
 using DocStringExtensions
 export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices, round!
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
+using Missings: Missing, missing
+using ArgCheck: @argcheck
+using Iterators: filter
 
-using DataFrames: DataFrame, nrow, missing, index, ncol, deleterows!
+using DataFrames: DataFrame, nrow, missing, index, ncol, deleterows!, eltypes
 using Crystals.Constants: default_tolerance
 import Base
 import Base: delete!
@@ -245,7 +248,7 @@ crystal = Crystal(eye(2)u"km",
                   tpositions=[1 1; 2 3; 4 5]u"m",
                   species=["Al", "O", "O"],
                   label=[:+, :-, :-])
-push!(crystal, [10, 20]u"nm", species="B", μ=1)
+push!(crystal, [10, 20]u"nm", species="B", μ=1, label=:a)
 crystal
 
 # output
@@ -253,45 +256,40 @@ crystal
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ Cartesian       │ species │ label   │ μ      │
-├──────┼─────────────────┼─────────┼─────────┼────────┤
-│ 1    │ (1.0,1.0)       │ "Al"    │ +       │ mssing │
-│ 2    │ (2.0,3.0)       │ "O"     │ -       │ mssing │
-│ 3    │ (4.0,5.0)       │ "O"     │ -       │ mssing │
-│ 4    │ (1.0e-8,2.0e-8) │ "B"     │ missing │ 1      │
+│ Atom │ Cartesian        │ species │ label │ μ       │
+├──────┼──────────────────┼─────────┼───────┼─────────┤
+│ 1    │ (1.0, 1.0)       │ "Al"    │ +     │ missing │
+│ 2    │ (2.0, 3.0)       │ "O"     │ -     │ missing │
+│ 3    │ (4.0, 5.0)       │ "O"     │ -     │ missing │
+│ 4    │ (1.0e-8, 2.0e-8) │ "B"     │ :a    │ 1       │
 ```
 """
 function Base.push!(crystal::Crystal, position::Vector; kwargs...)
     if length(position) ≠ size(crystal.cell, 1)
         error("Dimensionality of input position and crystal do not match")
     end
+    knowns = filter((item) -> item[1] ∈ names(crystal), kwargs)
+    unknowns = filter((item) -> item[1] ∉ names(crystal), kwargs)
+
+    @argcheck Set(names(crystal.properties)) ⊆ Set([u[1] for u in knowns])
+    for (key, value) in knowns
+        @argcheck  method_exists(convert, (Type{eltype(crystal[key])}, typeof(value)))
+    end
+
+    
     crystal.positions = hcat(crystal.positions,
                              position_for_crystal(crystal, position))
-    row = Any[missing for u in 1:length(crystal.properties)]
 
-    notpresent = Tuple{Symbol, Any}[]
-    const colnames = names(crystal.properties)
-    for (name, value) in kwargs
-        if name ∈ RESERVED_COLUMNS
-            error("$(name) is a reserved name and cannot be used in push!")
-        elseif name ∉ colnames
-            push!(notpresent, (name, value))
-        else
-            row[index(crystal.properties)[name]] = value
-        end
+    push!(crystal.properties, [zero(T) for T in eltypes(crystal.properties)])
+    for (key, value) in knowns
+        crystal[end, key] = value
     end
-    if size(crystal.properties, 2) == 0 && length(notpresent) > 0
-        const name, value = pop!(notpresent)
-        crystal.properties[name] = [value]
-    else
-        push!(crystal.properties, row)
+
+    for (key, value) in unknowns
+        const T = Union{Missing, typeof(value)}
+        crystal.properties[key] = push!(T[missing for i ∈ 1:nrow(crystal) - 1], value)
     end
-    for (name, value) in notpresent
-        # given twice, makes no sense
-        @assert name ∉ names(crystal.properties)
-        crystal.properties[name] = fill(value, size(crystal.properties, 1))
-        crystal.properties[1:(size(crystal.properties, 1) - 1), name] = missing
-    end
+    crystal
 end
 
 function Base.getindex(crystal::Crystal, index::RowIndices)
@@ -425,6 +423,8 @@ function Base.getindex(crystal::Crystal, atoms::Any, symbol::Symbol, pos::Any)
     crystal.positions[pos, atoms]
 end
 
+DataFrames.eltypes(crystal::Crystal) = push!(eltypes(crystal.properties),
+                                       Vector{eltype(crystal.positions)})
 Base.names(crystal::Crystal) = push!(names(crystal.properties), :position)
 Base.size(crystal::Crystal) = (r = size(crystal.properties); (r[1], r[2] + 1))
 Base.size(crystal::Crystal, i::Integer) = size(crystal)[i]
@@ -680,10 +680,10 @@ cell(nm):
   0.0 0.5 0.5
   0.5 0.0 0.5
   0.5 0.5 0.0
-│ Atom │ Cartesian         │
-├──────┼───────────────────┤
-│ 1    │ (0.0,-0.0,-0.0)   │
-│ 2    │ (0.25,0.25,-0.25) │
+│ Atom │ Cartesian           │
+├──────┼─────────────────────┤
+│ 1    │ (0.0, -0.0, -0.0)   │
+│ 2    │ (0.25, 0.25, -0.25) │
 ```
 """
 Base.round(crystal::Crystal, args...) = round!(deepcopy(crystal), args...)
