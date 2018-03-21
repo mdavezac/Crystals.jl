@@ -5,7 +5,7 @@ export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices,
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 using Missings: Missing, missing
 using ArgCheck: @argcheck
-using Iterators: filter
+using Iterators: filter, drop
 
 using DataFrames: DataFrame, nrow, missing, index, ncol, deleterows!, eltypes
 using Crystals.Constants: default_tolerance
@@ -248,7 +248,7 @@ crystal = Crystal(eye(2)u"km",
                   tpositions=[1 1; 2 3; 4 5]u"m",
                   species=["Al", "O", "O"],
                   label=[:+, :-, :-])
-push!(crystal, [10, 20]u"nm", species="B", μ=1, label=:a)
+push!(crystal, [[10, 20]u"nm", "B", :a])
 crystal
 
 # output
@@ -256,39 +256,32 @@ crystal
 cell(m):
   1000.0 0.0
   0.0 1000.0
-│ Atom │ Cartesian        │ species │ label │ μ       │
-├──────┼──────────────────┼─────────┼───────┼─────────┤
-│ 1    │ (1.0, 1.0)       │ "Al"    │ +     │ missing │
-│ 2    │ (2.0, 3.0)       │ "O"     │ -     │ missing │
-│ 3    │ (4.0, 5.0)       │ "O"     │ -     │ missing │
-│ 4    │ (1.0e-8, 2.0e-8) │ "B"     │ :a    │ 1       │
+│ Atom │ Cartesian        │ species │ label │
+├──────┼──────────────────┼─────────┼───────┤
+│ 1    │ (1.0, 1.0)       │ "Al"    │ +     │
+│ 2    │ (2.0, 3.0)       │ "O"     │ -     │
+│ 3    │ (4.0, 5.0)       │ "O"     │ -     │
+│ 4    │ (1.0e-8, 2.0e-8) │ "B"     │ :a    │
 ```
 """
-function Base.push!(crystal::Crystal, position::Vector; kwargs...)
-    if length(position) ≠ size(crystal.cell, 1)
-        error("Dimensionality of input position and crystal do not match")
-    end
-    knowns = filter((item) -> item[1] ∈ names(crystal), kwargs)
-    unknowns = filter((item) -> item[1] ∉ names(crystal), kwargs)
-
-    @argcheck Set(names(crystal.properties)) ⊆ Set([u[1] for u in knowns])
-    for (key, value) in knowns
-        @argcheck  method_exists(convert, (Type{eltype(crystal[key])}, typeof(value)))
-    end
-
-    
-    crystal.positions = hcat(crystal.positions,
-                             position_for_crystal(crystal, position))
-
-    push!(crystal.properties, [zero(T) for T in eltypes(crystal.properties)])
-    for (key, value) in knowns
-        crystal[end, key] = value
-    end
-
-    for (key, value) in unknowns
-        const T = Union{Missing, typeof(value)}
-        crystal.properties[key] = push!(T[missing for i ∈ 1:nrow(crystal) - 1], value)
-    end
+function Base.push!(crystal::Crystal, associative::Associative{Symbol, <: Any})
+    position = position_for_crystal(crystal, associative[:position])
+    crystal.positions = hcat(crystal.positions, position)
+    push!(crystal.properties, associative)
+    crystal
+end
+function Base.push!(crystal::Crystal, associative::Associative)
+    position_in = get(() -> associative["position"], associative, :position)
+    position = position_for_crystal(crystal, position_in)
+    push!(crystal.properties, associative)
+    crystal.positions = hcat(crystal.positions, position)
+    crystal
+end
+function Base.push!(crystal::Crystal, iterable::Any)
+    position_in = first(iterable)
+    position = position_for_crystal(crystal, position_in)
+    push!(crystal.properties, drop(iterable, 1))
+    crystal.positions = hcat(crystal.positions, position)
     crystal
 end
 

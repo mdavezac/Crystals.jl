@@ -55,19 +55,31 @@ end
 @testset "> Pushing" begin
     @testset "> simple line" begin
         crystal = Crystal(Float64[0 1 1; 1 0 1; 1 1 0]u"nm")
-
-        push!(crystal, [0.25, 0.25, 0.25], species="Al")
+        # add fractional position
+        push!(crystal, [[0.25, 0.25, 0.25]])
         @test length(crystal) == 1
         @test all(crystal.positions[:, end] .== [0.5, 0.5, 0.5]u"nm")
-        @test Set(names(crystal.properties)) == Set([:species])
-        @test crystal.properties[:species] == ["Al"]
+        @test Set(names(crystal.properties)) == Set()
 
-        push!(crystal, [0.25, 0.25, 0.25]u"nm", species="α")
+        crystal[:species] = "Al"
+        # add cartesian position, must also add species
+        push!(crystal, [[0.25, 0.25, 0.25]u"nm", "α"])
         @test length(crystal) == 2
-        @test all(crystal.positions[:, end] .== [0.25, 0.25, 0.25]u"nm")
+        @test all(crystal.positions[:, end] .≈ [0.25, 0.25, 0.25]u"nm")
         @test Set(names(crystal.properties)) == Set([:species])
-        @test nrow(crystal.properties) == 2
-        @test crystal.properties[end, :species] == "α"
+        @test crystal.properties[:species] == ["Al", "α"]
+
+        push!(crystal, Dict(:species=>"β", :position=>[0.2, 0.2, 0.2]u"nm"))
+        @test length(crystal) == 3
+        @test all(crystal.positions[:, end] .≈ [0.2, 0.2, 0.2]u"nm")
+        @test Set(names(crystal.properties)) == Set([:species])
+        @test crystal.properties[end, :species] == "β"
+
+        push!(crystal, Dict("species"=>"γ", "position"=>[0.1, 0.2, 0.2]u"nm"))
+        @test length(crystal) == 4
+        @test all(crystal.positions[:, end] .≈ [0.1, 0.2, 0.2]u"nm")
+        @test Set(names(crystal.properties)) == Set([:species])
+        @test crystal.properties[end, :species] == "γ"
     end
 end
 
