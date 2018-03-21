@@ -256,12 +256,13 @@ crystal
 cell(m):
   1000.0 0.0
   0.0 1000.0
+
 │ Atom │ Cartesian        │ species │ label │
 ├──────┼──────────────────┼─────────┼───────┤
 │ 1    │ (1.0, 1.0)       │ "Al"    │ +     │
 │ 2    │ (2.0, 3.0)       │ "O"     │ -     │
 │ 3    │ (4.0, 5.0)       │ "O"     │ -     │
-│ 4    │ (1.0e-8, 2.0e-8) │ "B"     │ :a    │
+│ 4    │ (1.0e-8, 2.0e-8) │ "B"     │ a     │
 ```
 """
 function Base.push!(crystal::Crystal, associative::Associative{Symbol, <: Any})
@@ -270,6 +271,7 @@ function Base.push!(crystal::Crystal, associative::Associative{Symbol, <: Any})
     push!(crystal.properties, associative)
     crystal
 end
+
 function Base.push!(crystal::Crystal, associative::Associative)
     position_in = get(() -> associative["position"], associative, :position)
     position = position_for_crystal(crystal, position_in)
@@ -277,6 +279,7 @@ function Base.push!(crystal::Crystal, associative::Associative)
     crystal.positions = hcat(crystal.positions, position)
     crystal
 end
+
 function Base.push!(crystal::Crystal, iterable::Any)
     position_in = first(iterable)
     position = position_for_crystal(crystal, position_in)
