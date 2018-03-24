@@ -6,6 +6,7 @@ using Crystals.Utilities: cell_parameters
 using Crystals.Structures: Crystal, volume
 using Unitful: unit, ustrip, Quantity
 using MicroLogging
+using ArgCheck
 
 function no_opt_change_test(new, last)
     const m_new = 16e0 * new;
@@ -131,8 +132,8 @@ the `niggly` algorithm.
 function gruber{T <: Number}(cell::Matrix{T};
                              tolerance::Real=default_tolerance, itermax::Integer=50,
                              max_no_change::Integer=10)
-    size(cell, 1) == size(cell, 2) || error("Matrix not rectangular")
-    volume(cell) > tolerance || error("Singular matrix")
+    @argcheck size(cell, 1) == size(cell, 2)
+    @argcheck volume(cell) > tolerance
     if itermax ≤ 0
         itermax = typemax(itermax)
     end

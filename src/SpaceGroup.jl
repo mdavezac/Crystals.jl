@@ -8,6 +8,7 @@ using Crystals.Gruber: gruber
 using Crystals.Utilities: into_voronoi, is_periodic, into_cell, is_unitful, to_fractional
 using Crystals.Utilities: to_cartesian, to_same_kind
 using MicroLogging
+using ArgCheck
 using Unitful: ustrip, Quantity, unit
 using CoordinateTransformations: AffineMap
 using DataFrames: nrow, AbstractDataFrame, groupby
@@ -92,13 +93,9 @@ function inner_translations_impl(fractional::AbstractMatrix,
                                  cell::AbstractMatrix,
                                  species::AbstractVector;
                                  tolerance::Real=default_tolerance)
-    @assert is_unitful(fractional) == Val{:unitless}()
-    if length(species) ≠ size(fractional, 2)
-        error("Size of species and fractional positions do not match")
-    end
-    if size(cell, 2) ≠ size(fractional, 1)
-        error("Size of cell and fractional positions do not match")
-    end
+    @argcheck is_unitful(fractional) == Val{:unitless}()
+    @argcheck length(species) == size(fractional, 2)
+    @argcheck size(cell, 2) == size(fractional, 1)
     grubcell = gruber(cell)
 
     # find species with minimum number of atoms
@@ -231,10 +228,8 @@ function primitive_impl(cell::AbstractMatrix,
                         cartesian::AbstractMatrix,
                         species::AbstractVector;
                         tolerance::Real=default_tolerance)
-    if size(cartesian, 2) ≠ length(species)
-        error("Positions and species have incompatible sizes")
-    end
-    size(cell, 2) == size(cartesian, 1) || error("Cell and positions are incompatible")
+    @argcheck size(cartesian, 2) == length(species)
+    @argcheck size(cell, 2) == size(cartesian, 1)
     size(cartesian, 2) == 0 && return cell, Int64[1:length(species)...]
 
     grubcell = gruber(cell)
@@ -366,9 +361,7 @@ function space_group(crystal::Crystal, cols::Union{Symbol, AbstractVector{Symbol
     space_group(crystal.cell, crystal[:position], species; kwargs...)
 end
 function space_group(crystal::Crystal, species::AbstractVector{Int64}; kwargs...)
-    if length(species) ≠ nrow(crystal)
-        error("The number of species and the number of atomic sites do not match")
-    end
+    @argcheck length(species) == nrow(crystal)
     space_group(crystal.cell, crystal[:position], species; kwargs...)
 end
 """

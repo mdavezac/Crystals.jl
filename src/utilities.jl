@@ -7,6 +7,7 @@ using Crystals.Structures: Crystal
 using Crystals.SNF: smith_normal_form
 using DataFrames: nrow
 using NamedTuples: @NT
+using ArgCheck
 using Unitful
 using Unitful: Dimensions, NoUnits
 using MicroLogging
@@ -273,7 +274,7 @@ Creates a supercell from an input lattice.
 """
 function supercell(lattice::Crystal, supercell::AbstractMatrix;
                    site_id::Bool=true, tolerance::Real=default_tolerance)
-    nrow(lattice) == 0 && error("Lattice is empty")
+    @argcheck nrow(lattice) != 0
 
     newcell = to_cartesian(supercell, lattice.cell)
     transform, quotient = hart_forcade(lattice.cell, newcell)

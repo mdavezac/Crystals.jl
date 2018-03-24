@@ -36,21 +36,13 @@ end
 function Crystal{C, D, U, P <: Number}(cell::Matrix{Quantity{C, D, U}},
                                        positions::Matrix{P},
                                        args...; kwargs...)
-    size(cell, 1) == size(cell, 2) || error("Cell matrix is not square")
-
-    if size(positions, 1) != size(cell, 1)
-        error("Positions and cell have different sizes")
-    end
+    @argcheck size(cell, 1) == size(cell, 2)
+    @argcheck size(positions, 1) == size(cell, 1)
 
     properties = DataFrame(args...; kwargs...)
 
-    if length(names(properties) ∩ RESERVED_COLUMNS) > 0
-        error("The following column names are reserved: $RESERVED_COLUMNS")
-    end
-
-    if nrow(properties) != 0 && nrow(properties) != size(positions, 2)
-        error("atomic properties and positions have different lengths")
-    end
+    @argcheck length(names(properties) ∩ RESERVED_COLUMNS) == 0
+    @argcheck nrow(properties) == 0 || nrow(properties) == size(positions, 2)
 
     if P <: Quantity
         const Q = promote_type(Quantity{C, D, U}, P)

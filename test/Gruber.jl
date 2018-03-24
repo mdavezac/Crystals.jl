@@ -56,7 +56,7 @@
     end
 
     @testset ">> Error if singular" begin
-        @test_throws ErrorException gruber([1 0 0; 0 1 0; 0 2 0])
+        @test_throws ArgumentError gruber([1 0 0; 0 1 0; 0 2 0])
     end
 
     @testset ">> Error if max iter" begin
