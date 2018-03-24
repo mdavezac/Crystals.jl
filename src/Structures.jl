@@ -5,7 +5,7 @@ export AbstractCrystal, Crystal, is_fractional, volume, are_compatible_lattices,
 using Unitful: Quantity, Dimensions, Units, unit, ustrip
 using Missings: Missing, missing
 using ArgCheck: @argcheck
-using Iterators: filter, drop
+using Base.Iterators: filter, drop
 
 using DataFrames: DataFrame, nrow, missing, index, ncol, deleterows!, eltypes
 using Crystals.Constants: default_tolerance
@@ -317,7 +317,7 @@ function Base.getindex(crystal::Crystal, symbols::AbstractVector{Symbol})
     if length(specials) == 0
         return crystal.properties[symbols]
     elseif length(specials) > 1 && length(setdiff(specials, (:x, :y, :z))) == 0
-        args = filter(x -> x ∉ specials, symbols)
+        args = collect(filter(x -> x ∉ specials, symbols))
         result = crystal.properties[args]
         for u in specials
             result[u] = crystal[u]
@@ -327,12 +327,12 @@ function Base.getindex(crystal::Crystal, symbols::AbstractVector{Symbol})
         allowed = setdiff(RESERVED_COLUMNS, (:x, :y, :z))
         error("Cannot use more than one of $allowed at a time")
     elseif specials[1] == :position
-        args = filter(x -> x ≠ :position, symbols)
+        args = collect(filter(x -> x ≠ :position, symbols))
         typeof(crystal)(crystal.cell, crystal.positions, crystal.properties[args])
     elseif specials[1] == :cartesian || specials[1] == :fractional
         const T, D, U = typeof(crystal).parameters[1:3]
         const positions = position_for_crystal(Val{specials[1]}(), crystal)
-        const args = filter(x -> x ≠ specials[1], symbols)
+        const args = collect(filter(x -> x ≠ specials[1], symbols))
         const P = eltype(positions)
         Crystal{T, D, U, P}(crystal.cell, positions, crystal.properties[args])
     end
@@ -384,7 +384,7 @@ function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVec
     if length(specials) == 0
         return crystal.properties[index, symbols]
     elseif length(specials) > 1 && length(setdiff(specials, (:x, :y, :z))) == 0
-        args = filter(x -> x ∉ specials, symbols)
+        args = collect(filter(x -> x ∉ specials, symbols))
         result = crystal.properties[index, args]
         for u in specials
             result[u] = crystal[index, u]
@@ -394,7 +394,7 @@ function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVec
         allowed = setdiff(RESERVED_COLUMNS, (:x, :y, :z))
         error("Cannot use more than one of $allowed at a time")
     elseif specials[1] == :position
-        args = filter(x -> x ≠ :position, symbols)
+        args = collect(filter(x -> x ≠ :position, symbols))
         typeof(crystal)(crystal.cell,
                         hcat(crystal.positions[:, index]),
                         crystal.properties[index, args])
@@ -403,7 +403,7 @@ function Base.getindex(crystal::Crystal, index::RowIndices, symbols::AbstractVec
         const positions = position_for_crystal(Val{specials[1]}(),
                                                crystal.cell,
                                                crystal.positions[:, index])
-        const args = filter(x -> x ≠ specials[1], symbols)
+        const args = collect(filter(x -> x ≠ specials[1], symbols))
         const P = eltype(positions)
         Crystal{T, D, U, P}(crystal.cell, hcat(positions), crystal.properties[index, args])
     end
@@ -459,7 +459,8 @@ end
 function Base.setindex!(crystal::Crystal, v::Crystal, cols::AbstractVector{Symbol})
     if :position ∈ cols
         crystal.positions = position_for_crystal(crystal, v)
-        setindex!(crystal.properties, v.properties, filter(x -> x ≠ :position, cols))
+        setindex!(crystal.properties, v.properties,
+                  collect(filter(x -> x ≠ :position, cols)))
     else
         setindex!(crystal.properties, v.properties, cols)
     end
@@ -512,7 +513,8 @@ function Base.setindex!(crystal::Crystal, v::Crystal,
             error("The two crystal structures do not have the same periodicity")
         end
         crystal.positions[:, row] = position_for_crystal(crystal, v)
-        setindex!(crystal.properties, v.properties, row, filter(x -> x ≠ :position, cols))
+        setindex!(crystal.properties, v.properties, row,
+                  collect(filter(x -> x ≠ :position, cols)))
     else
         setindex!(crystal.properties, v.properties, row, cols)
     end
@@ -580,7 +582,7 @@ structure.
 """
 function DataFrames.deleterows!(crystal::Crystal, row::Integer)
     deleterows!(crystal.properties, row)
-    rows = filter(i -> i ≠ row, 1:nrow(crystal))
+    rows = collect(filter(i -> i ≠ row, 1:nrow(crystal)))
     crystal.positions = crystal.positions[:, rows]
 end
 
@@ -590,7 +592,7 @@ end
 
 function DataFrames.deleterows!(crystal::Crystal, rows::RowIndices)
     deleterows!(crystal.properties, rows)
-    prows = filter(i -> i ∉ rows, 1:nrow(crystal))
+    prows = collect(filter(i -> i ∉ rows, 1:nrow(crystal)))
     crystal.positions = crystal.positions[:, prows]
 end
 
