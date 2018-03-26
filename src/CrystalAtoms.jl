@@ -26,14 +26,14 @@ immutable AtomicIterator{PARENT <: Crystal}
 end
 
 """ Iterator over each atom in the crystal """
-DataFrames.eachrow(crystal::Crystal) = AtomicIterator(crystal)
-""" Iterator over each atom in the crystal """
 eachatom(crystal::Crystal) = AtomicIterator(crystal)
+""" Iterator over each atom in the crystal """
+DataFrames.eachrow(crystal::Crystal) = eachatom(crystal)
 
 Base.start(itr::AtomicIterator) = 1
 Base.done(itr::AtomicIterator, i::Integer) = i > size(itr.parent, 1)
 Base.next(itr::AtomicIterator, i::Integer) = (CrystalAtom(itr.parent, i), i + 1)
-Base.size(itr::AtomicIterator) = (size(itr.parent, 1), )
+Base.size(itr::AtomicIterator) = (length(itr.parent), )
 Base.length(itr::AtomicIterator) = size(itr.parent, 1)
 Base.getindex(itr::AtomicIterator, i::Any) = CrystalAtom(itr.parent, i)
 Base.eltype{T <: Crystal}(::Type{AtomicIterator{T}}) = CrystalAtom{T}
