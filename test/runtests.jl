@@ -3,6 +3,7 @@ using Crystals
 using DataFrames: nrow, DataFrame, ncol, deleterows!, missing, ismissing, eachrow
 using Base.Test
 using Unitful
+using Documenter
 
 contains(x) = y -> x ∈ y
 all_integers(x::Array, ε::AbstractFloat=1e-8) = all(abs(x - round(Integer, x)) .< ε)
@@ -26,6 +27,15 @@ end
 end
 @testset "Gruber" begin
     include("Gruber.jl")
+end
+
+@testset "Docstests" begin
+    mktempdir() do path
+        makedocs(modules = [Crystals], clean = true,
+             build = joinpath(path, "build"),
+             pages = Crystals._doc_pages(),
+             root=joinpath(dirname(@__DIR__), "docs"))
+    end
 end
 
 end

@@ -58,5 +58,14 @@ module Lattices
   include("Binary.jl")
   include("A2BX4.jl")
 end
+
+""" setups docs, useful for docs and doctests """
+function _doc_pages()
+    Any["Home" => "index.md",
+        "Basic Usage" => "basic.md",
+        "Cartesian and Fractional Coordinates" => "cartesian.md",
+        "API Catalogue" => "methods.md"]
+end
+
 end # module
 @doc Markdown.readme("Crystals") -> Crystals
